@@ -1,0 +1,48 @@
+{
+  "name": "personal-site",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "parcel serve ./src/index.html"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^2.6.1",
+    "@typescript-eslint/parser": "^2.6.1",
+    "babel-eslint": "^10.0.3",
+    "eslint": "^6.6.0",
+    "parcel-bundler": "^1.12.4",
+    "standardx": "^5.0.0",
+    "typescript": "^3.7.2"
+  },
+  "dependencies": {
+    "@most/core": "^1.5.0",
+    "@most/scheduler": "^1.2.3",
+    "@most/types": "^1.0.2",
+    "mitt": "^1.2.0",
+    "morphdom": "^2.5.10",
+    "nanohtml": "^1.9.0"
+  },
+  "eslintConfig": {
+    "env": {
+      "browser": true
+    },
+    "extends": [
+      "standard"
+    ],
+    "parser": "babel-eslint",
+    "rules": {
+      "no-unused-vars": "error",
+      "@typescript-eslint/no-unused-vars": "off"
+    }
+  },
+  "standardx": {
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint/eslint-plugin"
+    ]
+  }
+}
