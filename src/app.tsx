@@ -1,15 +1,12 @@
+/** @jsx createElement */
 import { createApplication, createElement } from './lib/browser'
 
 function view (model) {
-  return createElement('div', {}, [
-    createElement(
-      'button',
-      {
-        onclick: () => ({ type: 'BUTTON_CLICKED' })
-      },
-      'clicked ' + (model.toString()) + ' times'
-    )
-  ])
+  return <div>
+    <button onclick={() => ({ type: 'BUTTON_CLICKED' })}>
+      Clicked {model.toString()} times!
+    </button>
+  </div>
 }
 
 function update (model, msg) {
