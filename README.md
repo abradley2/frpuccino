@@ -1,7 +1,7 @@
 # StreamElement
 
 An experiment in creating a `React.createElement`-like function that 
-takes in JSX and outputs an element with an attached Most.js event stream
+takes in JSX and outputs an element with an attached [Most.js](https://github.com/cujojs/most) event stream
 that outputs mapped DOM events
 
 For example:
