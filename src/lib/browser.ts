@@ -6,7 +6,7 @@ import { newDefaultScheduler } from '@most/scheduler'
 import eventList from './event-list'
 
 export interface StreamElement<Msg> extends Element {
-  eventStream: Stream<Msg>
+  eventStream: Stream<Msg>;
 }
 
 export function createApplication<Model, Msg> (
@@ -88,11 +88,7 @@ export function fromDOMEvent (event, query: string | Element): Stream<Event> {
       }
 
       return {
-        dispose: () => {
-          if (target) {
-            target[event] = undefined
-          }
-        }
+        dispose: () => {}
       }
     }
   }
@@ -122,6 +118,14 @@ export function createElement (tag, attributes, ...children) {
   }
 
   children.forEach(function appendChild (child) {
+    if (!child) {
+      return
+    }
+    if (child && child.constructor === Number) {
+      const textNode = document.createTextNode(child.toString())
+      el.appendChild(textNode)
+      return
+    }
     if (child && child.constructor === String) {
       const textNode = document.createTextNode(child)
       el.appendChild(textNode)
@@ -131,6 +135,7 @@ export function createElement (tag, attributes, ...children) {
       child.forEach(appendChild)
       return
     }
+
     el.appendChild(child)
 
     el.eventStream = merge(el.eventStream, child.eventStream)
@@ -151,12 +156,8 @@ export function render (target, elementTree) {
 // morphdom does not copy over event handlers so they need to be re-bound
 function onBeforeElUpdated (fromEl: Element, toEl: Element): boolean {
   Object.keys(eventList).forEach(eventHandler => {
-    if (fromEl[eventHandler]) {
-      toEl[eventHandler] = fromEl[eventHandler]
-      return
-    }
-    if (toEl[eventHandler] && !fromEl[eventHandler]) {
-      toEl[eventHandler] = undefined
+    if (toEl[eventHandler]) {
+      fromEl[eventHandler] = toEl[eventHandler]
     }
   })
   return true
