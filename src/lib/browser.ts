@@ -118,19 +118,22 @@ export function createElement (tag, attributes, ...children) {
   }
 
   children.forEach(function appendChild (child) {
-    if (!child) {
-      return
-    }
-    if (child && child.constructor === Number) {
+    if (typeof child === 'number') {
       const textNode = document.createTextNode(child.toString())
       el.appendChild(textNode)
       return
     }
+
+    if (!child) {
+      return
+    }
+
     if (child && child.constructor === String) {
       const textNode = document.createTextNode(child)
       el.appendChild(textNode)
       return
     }
+
     if (Array.isArray(child)) {
       child.forEach(appendChild)
       return

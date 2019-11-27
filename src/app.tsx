@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import { createApplication, createElement } from "./lib/browser";
+import { createApplication, createElement } from './lib/browser'
 
 interface Model {
   count: number;
@@ -8,19 +8,19 @@ interface Model {
 
 const init: Model = {
   count: 0,
-  message: ""
-};
+  message: ''
+}
 
 type Msg =
-  | { type: "BUTTON_CLICKED" }
-  | { type: "INPUT_CHANGED"; value: string };
+  | { type: 'BUTTON_CLICKED' }
+  | { type: 'INPUT_CHANGED'; value: string };
 
-function view(model: Model) {
+function view (model: Model) {
   return (
     <div>
       <div>
-        <button onclick={() => ({ type: "BUTTON_CLICKED" })}>
-          Clicked {model.count.toString()} times!
+        <button onclick={() => ({ type: 'BUTTON_CLICKED' })}>
+          Clicked {model.count} times!
         </button>
       </div>
       <div>
@@ -28,30 +28,30 @@ function view(model: Model) {
           value={model.message}
           oninput={e => {
             return {
-              type: "INPUT_CHANGED",
+              type: 'INPUT_CHANGED',
               value: e.target.value
-            };
+            }
           }}
         />
         <h3>{model.message}</h3>
       </div>
     </div>
-  );
+  )
 }
 
-function update(model: Model, msg) {
+function update (model: Model, msg: Msg) {
   switch (msg.type) {
-    case "BUTTON_CLICKED":
-      return { ...model, count: model.count + 1 };
+    case 'BUTTON_CLICKED':
+      return { ...model, count: model.count + 1 }
 
-    case "INPUT_CHANGED":
-      return { ...model, message: msg.value };
+    case 'INPUT_CHANGED':
+      return { ...model, message: msg.value }
 
     default:
-      return model;
+      return model
   }
 }
 
-createApplication(document.getElementById("app"), init, update, view);
+createApplication(document.getElementById('app'), init, update, view)
 
-Object.assign(window, { createElement }); // why do I have to do this??
+Object.assign(window, { createElement }) // why do I have to do this??

@@ -6,7 +6,7 @@ that outputs mapped DOM events
 
 For example:
 
-*app.js*
+**src/app.tsx**
 ```
 import { createElement, StreamElement } from './lib/browser'
 
@@ -30,4 +30,35 @@ import { Stream } from '@most/types'
 export interface StreamElement<Msg> extends Element {
   eventStream: Stream<Msg>
 }
+```
+
+This enables some cool stuff! With this we can create an application runtime
+that loops the resulting event stream from the `view` into an `update` function, which feeds
+that new model back into the `view` again, and so on and so forth.
+
+Here's an actual working example you can try in **src/app.tsx**
+
+```
+/** @jsx createElement */
+import { createApplication, createElement } from "./lib/browser";
+
+
+function view (model) {
+  return <button onclick={ () => ({type: 'CLICK'}) }>
+    Clicked {model} times!
+  </button>
+}
+
+function update (model, msg) {
+  switch (msg.type) {
+    case 'CLICK':
+      return model + 1
+    default:
+      return model
+  }
+}
+
+const node = document.getElementById('app')
+
+createApplication(node, 0, update, view)
 ```
