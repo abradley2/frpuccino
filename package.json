@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "parcel serve ./src/index.html"
+    "start": "parcel serve ./src/index.html",
+    "lint": "standardx --fix ./**/*.tsx && standardx --fix ./**/*.ts"
   },
   "author": "",
   "license": "ISC",
@@ -35,7 +36,7 @@
     ],
     "parser": "babel-eslint",
     "rules": {
-      "no-unused-vars": "error",
+      "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "off"
     }
   },
