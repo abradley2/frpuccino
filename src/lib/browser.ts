@@ -69,7 +69,7 @@ export function createApplication<Model, Msg> (
           event: (time, event) => {
             eventSource.emit('msg', {
               ...event,
-              time: scheduler.currentTime()
+              $time: scheduler.currentTime()
             })
             disposable.dispose()
           },
