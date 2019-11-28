@@ -111,9 +111,8 @@ export function fromDOMEvent (event, query: string | Element): Stream<Event> {
     typeof query === 'string' ? document.querySelector(query) : query
 
   if (target) {
-    const log = target.id === 'counter'
     target[event] = (e: Event) => {
-      sink.event(scheduler.currentTime(), e)
+      if (sink) sink.event(scheduler.currentTime(), e)
     }
   }
 
@@ -123,7 +122,9 @@ export function fromDOMEvent (event, query: string | Element): Stream<Event> {
       scheduler = _scheduler
 
       return {
-        dispose: () => {}
+        dispose: () => {
+          sink = undefined
+        }
       }
     }
   }
