@@ -52,6 +52,13 @@ function update (model: Model, msg: Msg) {
   }
 }
 
-createApplication(document.getElementById('app'), init, update, view)
+const { run } = createApplication(
+  document.getElementById('app'),
+  init,
+  update,
+  view
+)
+
+run()
 
 Object.assign(window, { createElement }) // why do I have to do this??

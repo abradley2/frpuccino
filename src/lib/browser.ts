@@ -1,7 +1,7 @@
 import { startWith, loop, empty, merge, map } from '@most/core'
 import updateDOM from 'morphdom'
 import mitt from 'mitt'
-import { Stream, Sink } from '@most/types'
+import { Stream, Sink, Scheduler } from '@most/types'
 import { newDefaultScheduler } from '@most/scheduler'
 import eventList from './event-list'
 
@@ -13,24 +13,34 @@ export function createApplication<Model, Msg> (
   mount: Element,
   init: Model,
   update: (model: Model, msg: Msg) => Model,
-  view: (model: Model) => Element
-): void {
+  view: (model: Model) => Element,
+  _eventStream?: Stream<Msg>
+): {
+  applicationStream: Stream<{ view: Element; events: Stream<Msg> }>,
+  eventSink: Sink<{ view: Element; events: Stream<Msg> }>,
+  scheduler: Scheduler,
+  run: () => void
+} {
   const scheduler = newDefaultScheduler()
 
-  const emitter = mitt()
-  const eventSource: Stream<Msg> = {
-    run: (sink, scheduler) => {
-      const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
-      emitter.on('msg', handleMsg)
-      return {
-        dispose: () => {
-          emitter.off('msg', handleMsg)
+  const eventSource = mitt()
+  const eventStream: Stream<Msg> =
+    merge(
+      {
+        run: (sink, scheduler) => {
+          const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
+          eventSource.on('msg', handleMsg)
+          return {
+            dispose: () => {
+              eventSource.off('msg', handleMsg)
+            }
+          }
         }
-      }
-    }
-  }
+      },
+      _eventStream || empty()
+    )
 
-  const application: Stream<{ view: Element; events: Stream<Msg> }> = loop(
+  const applicationStream: Stream<{ view: Element; events: Stream<Msg> }> = loop(
     (model: Model, msg: Msg) => {
       const nextModel = update(model, msg)
       const nextView = view(nextModel)
@@ -45,34 +55,45 @@ export function createApplication<Model, Msg> (
       }
     },
     init,
-    startWith({}, eventSource)
+    startWith({}, eventStream)
   )
 
-  const runtime: Sink<{ view: Element; events: Stream<Msg> }> = {
+  const eventSink: Sink<{ view: Element; events: Stream<Msg> }> = {
     event: function (time, event) {
       updateDOM(mount, event.view, { onBeforeElUpdated })
 
       const disposable = event.events.run(
         {
           event: (time, event) => {
-            emitter.emit('msg', event)
+            eventSource.emit('msg', event)
             disposable.dispose()
           },
           end: () => {
             disposable.dispose()
           },
-          error: () => {}
+          error: (err) => {
+            console.error(err)
+            throw err
+          }
         },
         scheduler
       )
     },
     end: () => {},
     error: err => {
+      console.error(err)
       throw err
     }
   }
 
-  application.run(runtime, scheduler)
+  return {
+    applicationStream,
+    eventSink,
+    scheduler,
+    run: () => {
+      applicationStream.run(eventSink, scheduler)
+    }
+  }
 }
 
 export function fromDOMEvent (event, query: string | Element): Stream<Event> {
