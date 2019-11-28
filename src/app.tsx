@@ -6,13 +6,17 @@ interface Model {
   hideCounter: boolean;
   disableCounter: boolean;
   message: string;
+  alphaFocused: boolean;
+  bravoFocused: boolean;
 }
 
 const init: Model = {
   count: 0,
   disableCounter: true,
   hideCounter: false,
-  message: ""
+  message: "",
+  alphaFocused: false,
+  bravoFocused: false
 };
 
 type Msg =
@@ -20,9 +24,11 @@ type Msg =
   | { type: "DISABLE_COUNTER" }
   | { type: "BUTTON_CLICKED" }
   | { type: "HIDE_COUNTER" }
-  | { type: "INPUT_CHANGED"; value: string };
+  | { type: "INPUT_CHANGED"; value: string }
+  | { type: "TOGGLE_ALPHA_FOCUS"; value: boolean }
+  | { type: "TOGGLE_BRAVO_FOCUS"; value: boolean };
 
-function view (model: Model) {
+function view(model: Model) {
   return (
     <div>
       <div>
@@ -57,6 +63,20 @@ function view (model: Model) {
         />
         <h3>{model.message}</h3>
       </div>
+      <div>
+        <input
+          onfocus={() => ({ type: "TOGGLE_ALPHA_FOCUS", value: true })}
+          onblur={() => ({ type: "TOGGLE_ALPHA_FOCUS", value: false })}
+        />
+        <div>{model.alphaFocused ? "FOCUSED" : "BLURRED"}</div>
+      </div>
+      <div>
+        <input
+          onfocus={() => ({ type: "TOGGLE_BRAVO_FOCUS", value: true })}
+          onblur={() => ({ type: "TOGGLE_BRAVO_FOCUS", value: false })}
+        />
+        <div>{model.bravoFocused ? "FOCUSED" : "BLURRED"}</div>
+      </div>
     </div>
   );
 }
@@ -74,7 +94,10 @@ function update(model: Model, msg: Msg) {
 
     case "DISABLE_COUNTER":
       return { ...model, disableCounter: !model.disableCounter };
-
+    case "TOGGLE_ALPHA_FOCUS":
+      return { ...model, alphaFocused: msg.value };
+    case "TOGGLE_BRAVO_FOCUS":
+      return { ...model, bravoFocused: msg.value };
     default:
       return model;
   }
