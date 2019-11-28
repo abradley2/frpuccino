@@ -102,16 +102,25 @@ export function createApplication<Model, Msg> (
 }
 
 export function fromDOMEvent (event, query: string | Element): Stream<Event> {
-  return {
-    run: (sink, scheduler) => {
-      const target =
-        typeof query === 'string' ? document.querySelector(query) : query
+  // we need to bind this to the element _immediately_ or else this
+  // won't be here for morphdoms onBeforeElUpdated hook
+  let sink
+  let scheduler
 
-      if (target) {
-        target[event] = (e: Event) => {
-          sink.event(scheduler.currentTime(), e)
-        }
-      }
+  const target =
+  typeof query === 'string' ? document.querySelector(query) : query
+
+  if (target) {
+    const log = target.id === 'counter'
+    target[event] = (e: Event) => {
+      sink.event(scheduler.currentTime(), e)
+    }
+  }
+
+  return {
+    run: (_sink, _scheduler) => {
+      sink = _sink
+      scheduler = _scheduler
 
       return {
         dispose: () => {}
@@ -137,6 +146,10 @@ export function createElement (tag, attributes, ...children) {
       }
       if (['className', 'id'].indexOf(name) !== -1) {
         el[name] = val
+        return
+      }
+
+      if (typeof val === 'undefined' || val === null) {
         return
       }
       el.setAttribute(name, val)
@@ -187,6 +200,8 @@ function onBeforeElUpdated (fromEl: Element, toEl: Element): boolean {
   Object.keys(eventList).forEach(eventHandler => {
     if (toEl[eventHandler]) {
       fromEl[eventHandler] = toEl[eventHandler]
+    } else if (fromEl[eventHandler]) {
+      fromEl[eventHandler] = undefined
     }
   })
   return true

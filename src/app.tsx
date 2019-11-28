@@ -10,7 +10,7 @@ interface Model {
 
 const init: Model = {
   count: 0,
-  disableCounter: false,
+  disableCounter: true,
   hideCounter: false,
   message: ""
 };
@@ -22,7 +22,7 @@ type Msg =
   | { type: "HIDE_COUNTER" }
   | { type: "INPUT_CHANGED"; value: string };
 
-function view(model: Model) {
+function view (model: Model) {
   return (
     <div>
       <div>
@@ -34,6 +34,7 @@ function view(model: Model) {
         </button>
         {!model.hideCounter && (
           <button
+            id="counter"
             onclick={
               model.disableCounter
                 ? undefined
@@ -44,7 +45,6 @@ function view(model: Model) {
           </button>
         )}
       </div>
-
       <div>
         <input
           value={model.message}
