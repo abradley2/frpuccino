@@ -1,4 +1,4 @@
-import { startWith, loop, empty, merge, map } from '@most/core'
+import { startWith, loop, empty, merge, map, take } from '@most/core'
 import updateDOM from 'morphdom'
 import mitt from 'mitt'
 import { Stream, Sink, Scheduler } from '@most/types'
@@ -16,31 +16,33 @@ export function createApplication<Model, Msg> (
   view: (model: Model) => Element,
   _eventStream?: Stream<Msg>
 ): {
-  applicationStream: Stream<{ view: Element; events: Stream<Msg> }>,
-  eventSink: Sink<{ view: Element; events: Stream<Msg> }>,
-  scheduler: Scheduler,
-  run: () => void
+  applicationStream: Stream<{ view: Element; events: Stream<Msg> }>;
+  eventSink: Sink<{ view: Element; events: Stream<Msg> }>;
+  scheduler: Scheduler;
+  run: () => void;
 } {
   const scheduler = newDefaultScheduler()
 
   const eventSource = mitt()
-  const eventStream: Stream<Msg> =
-    merge(
-      {
-        run: (sink, scheduler) => {
-          const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
-          eventSource.on('msg', handleMsg)
-          return {
-            dispose: () => {
-              eventSource.off('msg', handleMsg)
-            }
+  const eventStream: Stream<Msg> = merge(
+    {
+      run: (sink, scheduler) => {
+        const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
+        eventSource.on('msg', handleMsg)
+        return {
+          dispose: () => {
+            eventSource.off('msg', handleMsg)
           }
         }
-      },
-      _eventStream || empty()
-    )
+      }
+    },
+    _eventStream || empty()
+  )
 
-  const applicationStream: Stream<{ view: Element; events: Stream<Msg> }> = loop(
+  const applicationStream: Stream<{
+    view: Element;
+    events: Stream<Msg>;
+  }> = loop(
     (model: Model, msg: Msg) => {
       const nextModel = update(model, msg)
       const nextView = view(nextModel)
@@ -65,13 +67,16 @@ export function createApplication<Model, Msg> (
       const disposable = event.events.run(
         {
           event: (time, event) => {
-            eventSource.emit('msg', event)
+            eventSource.emit('msg', {
+              ...event,
+              time: scheduler.currentTime()
+            })
             disposable.dispose()
           },
           end: () => {
             disposable.dispose()
           },
-          error: (err) => {
+          error: err => {
             console.error(err)
             throw err
           }
@@ -123,7 +128,7 @@ export function createElement (tag, attributes, ...children) {
   if (attributes) {
     Object.keys(attributes).forEach(function (name) {
       const val = attributes[name]
-      if (eventList[name]) {
+      if (eventList[name] && val) {
         el.eventStream = merge(
           el.eventStream,
           map(val, fromDOMEvent(name, el))
