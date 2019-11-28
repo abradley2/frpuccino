@@ -108,7 +108,7 @@ export function fromDOMEvent (event, query: string | Element): Stream<Event> {
   let scheduler
 
   const target =
-  typeof query === 'string' ? document.querySelector(query) : query
+    typeof query === 'string' ? document.querySelector(query) : query
 
   if (target) {
     const log = target.id === 'counter'
@@ -140,7 +140,10 @@ export function createElement (tag, attributes, ...children) {
       if (eventList[name] && val) {
         el.eventStream = merge(
           el.eventStream,
-          map(val, fromDOMEvent(name, el))
+          map(
+            val.constructor === Function ? val : () => val,
+            fromDOMEvent(name, el)
+          )
         )
         return
       }

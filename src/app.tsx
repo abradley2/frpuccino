@@ -32,7 +32,7 @@ function view(model: Model) {
   return (
     <div>
       <div>
-        <button onclick={() => ({ type: "HIDE_COUNTER" })}>
+        <button onclick={{ type: "HIDE_COUNTER" }}>
           {model.hideCounter ? "show" : "hide"} counting button
         </button>
         <button onclick={() => ({ type: "DISABLE_COUNTER" })}>
