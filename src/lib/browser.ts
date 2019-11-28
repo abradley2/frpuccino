@@ -64,7 +64,7 @@ export function createApplication<Model, Msg> (
     event: function (time, event) {
       updateDOM(mount, event.view, { onBeforeElUpdated })
 
-      const disposable = event.events.run(
+      const disposable = take(1, event.events).run(
         {
           event: (time, event) => {
             eventSource.emit('msg', {
