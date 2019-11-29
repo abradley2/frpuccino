@@ -2,6 +2,7 @@
 import { createApplication, createElement, StreamElement } from "./lib/browser";
 import { propagateEventTask, now } from "@most/core";
 import { newTimeline, schedulerRelativeTo } from "@most/scheduler";
+import { Task } from '@most/types'
 
 Object.assign(window, { createElement }); // why do I have to do this??
 
@@ -85,7 +86,7 @@ function view(model: Model): StreamElement<Msg> {
   );
 }
 
-function update(model: Model, msg: Msg) {
+function update(model: Model, msg: Msg): Model {
   switch (msg.type) {
     case "BUTTON_CLICKED":
       return { ...model, count: model.count + 1 };
@@ -162,11 +163,5 @@ function cloneApplication() {
 
   applicationStream.run(eventSink, relativeScheduler);
 
-  timeline.runTasks(scheduler.currentTime() + 1, task => {
-    try {
-      task.run();
-    } catch (err) {
-      console.error(err);
-    }
-  });
+  timeline.runTasks(relativeScheduler.currentTime(), task => task.run());
 }
