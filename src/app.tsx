@@ -1,10 +1,15 @@
 /** @jsx createElement */
-import { createApplication, createElement, StreamElement } from "./lib/browser";
-import { propagateEventTask, now } from "@most/core";
-import { newTimeline, schedulerRelativeTo } from "@most/scheduler";
+import {
+  createApplication,
+  createElement,
+  StreamElement,
+  TimedMsg
+} from './lib/browser'
+import { propagateEventTask, now } from '@most/core'
+import { newTimeline, schedulerRelativeTo } from '@most/scheduler'
 import { Task } from '@most/types'
 
-Object.assign(window, { createElement }); // why do I have to do this??
+Object.assign(window, { createElement }) // why do I have to do this??
 
 interface Model {
   count: number;
@@ -19,37 +24,37 @@ const init: Model = {
   count: 0,
   disableCounter: true,
   hideCounter: false,
-  message: "",
+  message: '',
   alphaFocused: false,
   bravoFocused: false
-};
+}
 
 type Msg =
-  | { type: "NOOP" }
-  | { type: "DISABLE_COUNTER" }
-  | { type: "BUTTON_CLICKED" }
-  | { type: "HIDE_COUNTER" }
-  | { type: "INPUT_CHANGED"; value: string }
-  | { type: "TOGGLE_ALPHA_FOCUS"; value: boolean }
-  | { type: "TOGGLE_BRAVO_FOCUS"; value: boolean };
+  | { type: 'NOOP' }
+  | { type: 'DISABLE_COUNTER' }
+  | { type: 'BUTTON_CLICKED' }
+  | { type: 'HIDE_COUNTER' }
+  | { type: 'INPUT_CHANGED'; value: string }
+  | { type: 'TOGGLE_ALPHA_FOCUS'; value: boolean }
+  | { type: 'TOGGLE_BRAVO_FOCUS'; value: boolean };
 
-function view(model: Model): StreamElement<Msg> {
+function view (model: Model) {
   return (
     <div>
       <div>
-        <button onclick={{ type: "HIDE_COUNTER" }}>
-          {model.hideCounter ? "show" : "hide"} counting button
+        <button onclick={{ type: 'HIDE_COUNTER' }}>
+          {model.hideCounter ? 'show' : 'hide'} counting button
         </button>
-        <button onclick={() => ({ type: "DISABLE_COUNTER" })}>
-          {model.disableCounter ? "Enable counter" : "Disable counter"}
+        <button onclick={() => ({ type: 'DISABLE_COUNTER' })}>
+          {model.disableCounter ? 'Enable counter' : 'Disable counter'}
         </button>
         {!model.hideCounter && (
           <button
-            id="counter"
+            id='counter'
             onclick={
               model.disableCounter
                 ? undefined
-                : () => ({ type: "BUTTON_CLICKED" })
+                : () => ({ type: 'BUTTON_CLICKED' })
             }
           >
             Clicked {model.count} times!
@@ -61,73 +66,75 @@ function view(model: Model): StreamElement<Msg> {
           value={model.message}
           oninput={e => {
             return {
-              type: "INPUT_CHANGED",
+              type: 'INPUT_CHANGED',
               value: e.target.value
-            };
+            }
           }}
         />
         <h3>{model.message}</h3>
       </div>
       <div>
         <input
-          onfocus={() => ({ type: "TOGGLE_ALPHA_FOCUS", value: true })}
-          onblur={() => ({ type: "TOGGLE_ALPHA_FOCUS", value: false })}
+          onfocus={() => ({ type: 'TOGGLE_ALPHA_FOCUS', value: true })}
+          onblur={() => ({ type: 'TOGGLE_ALPHA_FOCUS', value: false })}
         />
-        <div>{model.alphaFocused ? "FOCUSED" : "BLURRED"}</div>
+        <div>{model.alphaFocused ? 'FOCUSED' : 'BLURRED'}</div>
       </div>
       <div>
         <input
-          onfocus={() => ({ type: "TOGGLE_BRAVO_FOCUS", value: true })}
-          onblur={() => ({ type: "TOGGLE_BRAVO_FOCUS", value: false })}
+          onfocus={() => ({ type: 'TOGGLE_BRAVO_FOCUS', value: true })}
+          onblur={() => ({ type: 'TOGGLE_BRAVO_FOCUS', value: false })}
         />
-        <div>{model.bravoFocused ? "FOCUSED" : "BLURRED"}</div>
+        <div>{model.bravoFocused ? 'FOCUSED' : 'BLURRED'}</div>
       </div>
     </div>
-  );
+  )
 }
 
-function update(model: Model, msg: Msg): Model {
+function update (model: Model, timedMsg: TimedMsg<Msg>): Model {
+  const { msg } = timedMsg
+
   switch (msg.type) {
-    case "BUTTON_CLICKED":
-      return { ...model, count: model.count + 1 };
+    case 'BUTTON_CLICKED':
+      return { ...model, count: model.count + 1 }
 
-    case "INPUT_CHANGED":
-      return { ...model, message: msg.value };
+    case 'INPUT_CHANGED':
+      return { ...model, message: msg.value }
 
-    case "HIDE_COUNTER":
-      return { ...model, hideCounter: !model.hideCounter };
+    case 'HIDE_COUNTER':
+      return { ...model, hideCounter: !model.hideCounter }
 
-    case "DISABLE_COUNTER":
-      return { ...model, disableCounter: !model.disableCounter };
-    case "TOGGLE_ALPHA_FOCUS":
-      return { ...model, alphaFocused: msg.value };
-    case "TOGGLE_BRAVO_FOCUS":
-      return { ...model, bravoFocused: msg.value };
+    case 'DISABLE_COUNTER':
+      return { ...model, disableCounter: !model.disableCounter }
+    case 'TOGGLE_ALPHA_FOCUS':
+      return { ...model, alphaFocused: msg.value }
+    case 'TOGGLE_BRAVO_FOCUS':
+      return { ...model, bravoFocused: msg.value }
     default:
-      return model;
+      return model
   }
 }
 
-const record = [];
+const record = []
 
 const { run, scheduler, startTime } = createApplication(
-  document.getElementById("app"),
+  document.getElementById('app'),
   init,
   (model, msg) => {
-    record.push(msg);
-    return update(model, msg as Msg);
+    record.push(msg)
+    return update(model, msg as TimedMsg<Msg>)
   },
   view
-);
+)
 
-run();
+run()
 
-setTimeout(cloneApplication, 5000);
+setTimeout(cloneApplication, 5000)
 
-function cloneApplication() {
+function cloneApplication () {
   // first we need to create a new place on the document to hose the cloned application
-  const appClone = document.createElement("div");
-  document.body.appendChild(appClone);
+  const appClone = document.createElement('div')
+  document.body.appendChild(appClone)
 
   // now we need a new stream and sink for the application. We can reuse our init, update, and
   // view function- we're just passing in a new place to host the application
@@ -136,12 +143,12 @@ function cloneApplication() {
     init,
     update,
     view
-  );
+  )
 
-  const offset = scheduler.currentTime() - startTime();
-  const relativeScheduler = schedulerRelativeTo(offset, scheduler);
+  const offset = scheduler.currentTime() - startTime()
+  const relativeScheduler = schedulerRelativeTo(offset, scheduler)
 
-  const timeline = newTimeline();
+  const timeline = newTimeline()
 
   // now that our scheduler has the time set to when the application began we can simple schedule
   // our recorded events to be played _at the time they happened_
@@ -149,19 +156,19 @@ function cloneApplication() {
     const eventTask = propagateEventTask(
       { eventStream: now(event) },
       eventSink
-    );
+    )
 
     const scheduledTask = relativeScheduler.scheduleTask(
       0,
-      (event.$time || 0) - startTime(),
+      event.time - startTime(),
       -1,
       eventTask
-    );
+    )
 
-    timeline.add(scheduledTask);
-  });
+    timeline.add(scheduledTask)
+  })
 
-  applicationStream.run(eventSink, relativeScheduler);
+  applicationStream.run(eventSink, relativeScheduler)
 
-  timeline.runTasks(relativeScheduler.currentTime(), task => task.run());
+  timeline.runTasks(relativeScheduler.currentTime(), task => task.run())
 }

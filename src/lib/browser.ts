@@ -12,14 +12,22 @@ export interface StreamElement<Msg> extends Element {
   eventStream?: Stream<Msg>;
 }
 
+export interface TimedMsg<Msg> {
+  time?: number;
+  msg?: Msg;
+}
+
 export function createApplication<Model, Msg> (
   mount: Element,
   init: Model,
-  update: (model: Model, msg: Msg) => Model,
+  update: (model: Model, msg: TimedMsg<Msg>) => Model,
   view: (model: Model) => StreamElement<Msg>
 ): {
-  applicationStream: Stream<{ view: Element; eventStream: Stream<Msg> }>;
-  eventSink: Sink<{ view?: Element; eventStream: Stream<Msg> }>;
+  applicationStream: Stream<{
+    view: Element;
+    eventStream: Stream<TimedMsg<Msg>>;
+  }>;
+  eventSink: Sink<{ view?: Element; eventStream: Stream<TimedMsg<Msg>> }>;
   scheduler: Scheduler;
   run: () => Disposable;
   startTime: () => number | undefined;
@@ -28,7 +36,7 @@ export function createApplication<Model, Msg> (
   const scheduler = newDefaultScheduler()
 
   const eventSource = mitt()
-  const eventStream: Stream<Msg> = {
+  const eventStream: Stream<TimedMsg<Msg>> = {
     run: (sink, scheduler) => {
       const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
       eventSource.on(MSG, handleMsg)
@@ -42,35 +50,40 @@ export function createApplication<Model, Msg> (
 
   const applicationStream: Stream<{
     view: Element;
-    eventStream: Stream<Msg>;
+    eventStream: Stream<TimedMsg<Msg>>;
   }> = loop(
-    (model: Model, msg: Msg) => {
-      const nextModel = update(model, msg)
+    (model: Model, timedMsg: TimedMsg<Msg>) => {
+      const nextModel = update(model, timedMsg)
       const nextView: StreamElement<Msg> = view(nextModel)
 
       return {
         seed: nextModel,
         value: {
           view: nextView,
-          eventStream: nextView.eventStream
+          eventStream: map(msg => {
+            return { time: scheduler.currentTime(), msg }
+          }, nextView.eventStream)
         }
       }
     },
     init,
-    startWith({}, eventStream)
+    map((timedMsg: TimedMsg<Msg>) => {
+      if (timedMsg.time) return timedMsg
+      return Object.assign(timedMsg, { time: scheduler.currentTime() })
+    }, startWith({ msg: <Msg>{} }, eventStream))
   )
 
-  const eventSink: Sink<{ view: Element; eventStream: Stream<Msg> }> = {
+  const eventSink: Sink<{
+    view: Element;
+    eventStream: Stream<TimedMsg<Msg>>;
+  }> = {
     event: function (time, event) {
       if (event.view) updateDOM(mount, event.view, { onBeforeElUpdated })
 
       const disposable = event.eventStream.run(
         {
-          event: (time, event) => {
-            eventSource.emit(MSG, {
-              ...event,
-              $time: scheduler.currentTime()
-            })
+          event: (time, timedMsg) => {
+            eventSource.emit(MSG, timedMsg)
           },
           end: () => {
             disposable.dispose()
@@ -130,7 +143,11 @@ export function fromDOMEvent (event, query: string | Element): Stream<Event> {
   }
 }
 
-export function createElement<Msg> (tag: string, attributes: StreamAttributes<Msg>, ...children): StreamElement<Msg> {
+export function createElement<Msg> (
+  tag: string,
+  attributes: StreamAttributes<Msg>,
+  ...children
+): StreamElement<Msg> {
   const el: StreamElement<Msg> = document.createElement(tag)
 
   el.eventStream = empty()
