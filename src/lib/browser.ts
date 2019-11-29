@@ -1,7 +1,7 @@
 import { startWith, loop, empty, merge, map, take } from '@most/core'
 import updateDOM from 'morphdom'
 import mitt from 'mitt'
-import { Stream, Sink, Scheduler } from '@most/types'
+import { Stream, Sink, Scheduler, Disposable } from '@most/types'
 import { newDefaultScheduler } from '@most/scheduler'
 import eventList from './event-list'
 import { StreamAttributes } from './attributes'
@@ -19,7 +19,7 @@ export function createApplication<Model, Msg> (
   applicationStream: Stream<{ view: Element; eventStream: Stream<Msg> }>;
   eventSink: Sink<{ view?: Element; eventStream: Stream<Msg> }>;
   scheduler: Scheduler;
-  run: () => void;
+  run: () => Disposable;
   startTime: () => number | undefined;
 } {
   let startTime // we set this when _run_ is called
@@ -62,14 +62,13 @@ export function createApplication<Model, Msg> (
     event: function (time, event) {
       if (event.view) updateDOM(mount, event.view, { onBeforeElUpdated })
 
-      const disposable = take(1, event.eventStream).run(
+      const disposable = event.eventStream.run(
         {
           event: (time, event) => {
             eventSource.emit('msg', {
               ...event,
               $time: scheduler.currentTime()
             })
-            disposable.dispose()
           },
           end: () => {
             disposable.dispose()
@@ -95,7 +94,7 @@ export function createApplication<Model, Msg> (
     scheduler,
     run: () => {
       startTime = scheduler.currentTime()
-      applicationStream.run(eventSink, scheduler)
+      return applicationStream.run(eventSink, scheduler)
     },
     startTime: () => startTime
   }
