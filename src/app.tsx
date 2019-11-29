@@ -1,5 +1,9 @@
 /** @jsx createElement */
-import { createApplication, createElement } from "./lib/browser";
+import { createApplication, createElement, StreamElement } from "./lib/browser";
+import { propagateEventTask, now } from "@most/core";
+import { newTimeline, schedulerRelativeTo } from "@most/scheduler";
+
+Object.assign(window, { createElement }); // why do I have to do this??
 
 interface Model {
   count: number;
@@ -28,7 +32,7 @@ type Msg =
   | { type: "TOGGLE_ALPHA_FOCUS"; value: boolean }
   | { type: "TOGGLE_BRAVO_FOCUS"; value: boolean };
 
-function view(model: Model) {
+function view(model: Model): StreamElement<Msg> {
   return (
     <div>
       <div>
@@ -103,13 +107,72 @@ function update(model: Model, msg: Msg) {
   }
 }
 
-const { run } = createApplication(
+const record = [];
+
+const { run, scheduler, startTime } = createApplication(
   document.getElementById("app"),
   init,
-  update,
+  (model, msg) => {
+    record.push(msg);
+    return update(model, msg as Msg);
+  },
   view
 );
 
 run();
 
-Object.assign(window, { createElement }); // why do I have to do this??
+setTimeout(cloneApplication, 5000);
+
+function cloneApplication() {
+  // first we need to create a new place on the document to hose the cloned application
+  const appClone = document.createElement("div");
+  document.body.appendChild(appClone);
+
+  // now we need a new stream and sink for the application. We can reuse our init, update, and
+  // view function- we're just passing in a new place to host the application
+  const { applicationStream, eventSink } = createApplication(
+    appClone,
+    init,
+    update,
+    view
+  );
+
+  const offset = scheduler.currentTime() - startTime();
+  const relativeScheduler = schedulerRelativeTo(offset, scheduler);
+
+  console.log({
+    offset,
+    startTime: startTime(),
+    relativeSchedulerCurrentTime: relativeScheduler.currentTime()
+  });
+
+
+  const timeline = newTimeline()
+
+  // now that our scheduler has the time set to when the application began we can simple schedule
+  // our recorded events to be played _at the time they happened_
+  record
+    .forEach(event => {
+      const eventTask = propagateEventTask({eventStream: now(event)}, eventSink);
+
+
+      const scheduledTask = relativeScheduler.scheduleTask(
+        0,
+        (event.$time || 0) - startTime(),
+        -1,
+        eventTask
+      );
+
+      timeline.add(scheduledTask)
+    });
+
+  applicationStream.run(eventSink, relativeScheduler);
+
+  timeline.runTasks(scheduler.currentTime() + 1, (task) => {
+    try {
+      task.run()
+    } catch (err) {
+      console.error(err)
+    }
+  })
+}
