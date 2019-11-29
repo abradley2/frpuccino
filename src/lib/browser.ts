@@ -14,7 +14,7 @@ export interface StreamElement<Msg> extends Element {
 
 export interface TimedMsg<Msg> {
   time?: number;
-  msg?: Msg;
+  msg?: Msg | { type: "__INIT__" };
 }
 
 export function createApplication<Model, Msg> (
@@ -70,7 +70,7 @@ export function createApplication<Model, Msg> (
     map((timedMsg: TimedMsg<Msg>) => {
       if (timedMsg.time) return timedMsg
       return Object.assign(timedMsg, { time: scheduler.currentTime() })
-    }, startWith({ msg: <Msg>{} }, eventStream))
+    }, startWith({ msg: { type: '__INIT__' }, time: undefined }, eventStream))
   )
 
   const eventSink: Sink<{
