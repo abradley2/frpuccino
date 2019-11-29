@@ -6,6 +6,8 @@ import { newDefaultScheduler } from '@most/scheduler'
 import eventList from './event-list'
 import { StreamAttributes } from './attributes'
 
+const MSG = 'MSG'
+
 export interface StreamElement<Msg> extends Element {
   eventStream?: Stream<Msg>;
 }
@@ -29,10 +31,10 @@ export function createApplication<Model, Msg> (
   const eventStream: Stream<Msg> = {
     run: (sink, scheduler) => {
       const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
-      eventSource.on('msg', handleMsg)
+      eventSource.on(MSG, handleMsg)
       return {
         dispose: () => {
-          eventSource.off('msg', handleMsg)
+          eventSource.off(MSG, handleMsg)
         }
       }
     }
@@ -65,7 +67,7 @@ export function createApplication<Model, Msg> (
       const disposable = event.eventStream.run(
         {
           event: (time, event) => {
-            eventSource.emit('msg', {
+            eventSource.emit(MSG, {
               ...event,
               $time: scheduler.currentTime()
             })
