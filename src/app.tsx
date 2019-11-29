@@ -5,8 +5,8 @@ import {
   StreamElement,
   TimedMsg
 } from './lib/browser'
-import { propagateEventTask, now } from '@most/core'
-import { newTimeline, schedulerRelativeTo } from '@most/scheduler'
+import { propagateEventTask, now, at} from '@most/core'
+import { newTimeline, schedulerRelativeTo, delay } from '@most/scheduler'
 import { Task } from '@most/types'
 
 Object.assign(window, { createElement }) // why do I have to do this??
@@ -157,15 +157,7 @@ function cloneApplication () {
       { eventStream: now(event) },
       eventSink
     )
-
-    const scheduledTask = relativeScheduler.scheduleTask(
-      0,
-      event.time - startTime(),
-      -1,
-      eventTask
-    )
-
-    timeline.add(scheduledTask)
+    timeline.add(delay(event.time - startTime(), eventTask, scheduler))
   })
 
   applicationStream.run(eventSink, relativeScheduler)
