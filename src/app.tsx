@@ -140,39 +140,33 @@ function cloneApplication() {
   const offset = scheduler.currentTime() - startTime();
   const relativeScheduler = schedulerRelativeTo(offset, scheduler);
 
-  console.log({
-    offset,
-    startTime: startTime(),
-    relativeSchedulerCurrentTime: relativeScheduler.currentTime()
-  });
-
-
-  const timeline = newTimeline()
+  const timeline = newTimeline();
 
   // now that our scheduler has the time set to when the application began we can simple schedule
   // our recorded events to be played _at the time they happened_
-  record
-    .forEach(event => {
-      const eventTask = propagateEventTask({eventStream: now(event)}, eventSink);
+  record.forEach(event => {
+    const eventTask = propagateEventTask(
+      { eventStream: now(event) },
+      eventSink
+    );
 
+    const scheduledTask = relativeScheduler.scheduleTask(
+      0,
+      (event.$time || 0) - startTime(),
+      -1,
+      eventTask
+    );
 
-      const scheduledTask = relativeScheduler.scheduleTask(
-        0,
-        (event.$time || 0) - startTime(),
-        -1,
-        eventTask
-      );
-
-      timeline.add(scheduledTask)
-    });
+    timeline.add(scheduledTask);
+  });
 
   applicationStream.run(eventSink, relativeScheduler);
 
-  timeline.runTasks(scheduler.currentTime() + 1, (task) => {
+  timeline.runTasks(scheduler.currentTime() + 1, task => {
     try {
-      task.run()
+      task.run();
     } catch (err) {
-      console.error(err)
+      console.error(err);
     }
-  })
+  });
 }

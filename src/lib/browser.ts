@@ -14,9 +14,7 @@ export function createApplication<Model, Msg> (
   mount: Element,
   init: Model,
   update: (model: Model, msg: Msg) => Model,
-  view: (model: Model) => StreamElement<Msg>,
-  // _eventStream argument is for testing purposes only! do not use this!
-  _eventStream?: Stream<Msg>
+  view: (model: Model) => StreamElement<Msg>
 ): {
   applicationStream: Stream<{ view: Element; eventStream: Stream<Msg> }>;
   eventSink: Sink<{ view?: Element; eventStream: Stream<Msg> }>;
@@ -28,20 +26,17 @@ export function createApplication<Model, Msg> (
   const scheduler = newDefaultScheduler()
 
   const eventSource = mitt()
-  const eventStream: Stream<Msg> = merge(
-    {
-      run: (sink, scheduler) => {
-        const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
-        eventSource.on('msg', handleMsg)
-        return {
-          dispose: () => {
-            eventSource.off('msg', handleMsg)
-          }
+  const eventStream: Stream<Msg> = {
+    run: (sink, scheduler) => {
+      const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
+      eventSource.on('msg', handleMsg)
+      return {
+        dispose: () => {
+          eventSource.off('msg', handleMsg)
         }
       }
-    },
-    _eventStream || empty()
-  )
+    }
+  }
 
   const applicationStream: Stream<{
     view: Element;
