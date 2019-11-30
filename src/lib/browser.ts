@@ -30,7 +30,6 @@ export function createApplication<Model, Msg> (
   eventSink: Sink<{ view?: Element; eventStream: Stream<TimedMsg<Msg>> }>;
   scheduler: Scheduler;
   run: () => Disposable;
-  startTime: () => number | undefined;
 } {
   let startTime // we set this when _run_ is called
   const scheduler = newDefaultScheduler()
@@ -108,10 +107,8 @@ export function createApplication<Model, Msg> (
     eventSink,
     scheduler,
     run: () => {
-      startTime = scheduler.currentTime()
       return applicationStream.run(eventSink, scheduler)
-    },
-    startTime: () => startTime
+    }
   }
 }
 

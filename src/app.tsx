@@ -117,7 +117,7 @@ function update (model: Model, timedMsg: TimedMsg<Msg>): Model {
 
 const record = []
 
-const { run, scheduler, startTime } = createApplication(
+const { run, scheduler } = createApplication(
   document.getElementById('app'),
   init,
   (model, msg) => {
@@ -132,6 +132,7 @@ run()
 setTimeout(cloneApplication, 5000)
 
 function cloneApplication () {
+  const startTime = record[0].time
   // first we need to create a new place on the document to hose the cloned application
   const appClone = document.createElement('div')
   document.body.appendChild(appClone)
@@ -145,7 +146,7 @@ function cloneApplication () {
     view
   )
 
-  const offset = scheduler.currentTime() - startTime()
+  const offset = scheduler.currentTime() - startTime
   const relativeScheduler = schedulerRelativeTo(offset, scheduler)
 
   const timeline = newTimeline()
@@ -157,7 +158,7 @@ function cloneApplication () {
       { eventStream: now(event) },
       eventSink
     )
-    timeline.add(delay(event.time - startTime(), eventTask, scheduler))
+    timeline.add(delay(event.time - startTime, eventTask, scheduler))
   })
 
   applicationStream.run(eventSink, relativeScheduler)
