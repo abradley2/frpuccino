@@ -48,10 +48,9 @@ function createTimeoutTask (scheduler: Scheduler, sink): ScheduledTask {
   const task = {
     run: () => {
       disposable = makeRequest().run(sink, scheduler)
-      setTimeout(() => task.error(scheduler.currentTime(), new Error('bad')), 2000)
+      setTimeout(() => disposable.dispose(), 2000)
     },
     error: (t, err) => {
-      console.log('caught!', err && err.message)
       if (disposable) disposable.dispose()
     },
     dispose: () => {

@@ -17,24 +17,24 @@ export interface TimedMsg<Msg> {
   msg?: Msg | { type: "__INIT__" };
 }
 
-export type TaskCreator<Msg> = (scheduler: Scheduler, sink: Sink<{eventStream: Stream<TimedMsg<Msg>>}>) => ScheduledTask | ScheduledTask[];
+export type TaskCreator<Msg> = (scheduler: Scheduler, sink: Sink<{eventStream: Stream<TimedMsg<Msg>>}>) => ScheduledTask;
 
 interface ApplicationConfig<Msg, Model> {
     mount: Element,
     init: Model,
-    update: (model: Model, msg: TimedMsg<Msg>, scheduler: Scheduler) => Model | [Model, TaskCreator<Msg>],
+    update: (model: Model, msg: TimedMsg<Msg>, scheduler: Scheduler) => Model | [Model, TaskCreator<Msg> | TaskCreator<Msg>[]],
     view: (model: Model) => StreamElement<Msg>
 }
 
 export function createApplication<Model, Msg> (applicationConfig: ApplicationConfig<Msg, Model>): {
   applicationStream: Stream<{
     view: Element;
-    task?: TaskCreator<Msg>;
+    task?: TaskCreator<Msg> | TaskCreator<Msg>[];
     eventStream: Stream<TimedMsg<Msg>>;
   }>;
   applicationSink: Sink<{
     view?: Element;
-    task?: TaskCreator<Msg>;
+    task?: TaskCreator<Msg> | TaskCreator<Msg>[];
     eventStream: Stream<TimedMsg<Msg>>;
   }>;
   scheduler: Scheduler;
@@ -60,7 +60,7 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
 
   const applicationStream: Stream<{
     view: Element;
-    task?: TaskCreator<Msg>;
+    task?: TaskCreator<Msg> | TaskCreator<Msg>[];
     eventStream: Stream<TimedMsg<Msg>>;
   }> = loop(
     (model: Model, timedMsg: TimedMsg<Msg>) => {
@@ -68,7 +68,7 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
       let nextModel
 
       const updateResult = update(model, timedMsg, scheduler)
-      if (Array.isArray(updateResult)) {
+      if (Array.isArray(updateResult) && typeof updateResult[1] === 'function') {
         [nextModel, task] = updateResult
       } else {
         nextModel = updateResult
@@ -96,7 +96,7 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
 
   const applicationSink: Sink<{
     view: Element;
-    task?: TaskCreator<Msg>;
+    task?: TaskCreator<Msg> | TaskCreator<Msg>[];
     eventStream: Stream<TimedMsg<Msg>>;
   }> = {
     event: function (time, event) {
@@ -104,13 +104,17 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
         updateDOM(mount, event.view, { onBeforeElUpdated })
       }
 
+      const tasks = Array.isArray(event.task)
+        ? event.task
+        : [event.task]
+
       if (event.task) {
         const timeline = newTimeline()
-        let tasks = event.task(scheduler, applicationSink)
-        if (!Array.isArray(tasks)) {
-          tasks = [tasks]
-        }
-        tasks.forEach(timeline.add.bind(timeline))
+
+        tasks.forEach((t) => {
+          const task = t(scheduler, applicationSink)
+          timeline.add(task)
+        })
         timeline.runTasks(0, (t) => t.run())
       }
 
