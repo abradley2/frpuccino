@@ -104,11 +104,11 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
         updateDOM(mount, event.view, { onBeforeElUpdated })
       }
 
-      const tasks = Array.isArray(event.task)
-        ? event.task
-        : [event.task]
-
       if (event.task) {
+        const tasks = Array.isArray(event.task)
+          ? event.task
+          : [event.task]
+
         const timeline = newTimeline()
 
         tasks.forEach((t) => {
@@ -126,8 +126,8 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
           end: () => {
             disposable.dispose()
           },
-          error: err => {
-            console.error(err)
+          error: (_, err) => {
+            console.error('error thrown in event source: ' + err.message)
             throw err
           }
         },
@@ -135,9 +135,8 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
       )
     },
     end: () => {},
-    error: err => {
+    error: (_, err) => {
       console.error(err)
-      throw err
     }
   }
 
