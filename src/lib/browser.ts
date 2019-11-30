@@ -1,8 +1,8 @@
 import { startWith, loop, empty, merge, map, take } from '@most/core'
 import updateDOM from 'morphdom'
 import mitt from 'mitt'
-import { Stream, Sink, Scheduler, Disposable } from '@most/types'
-import { newDefaultScheduler } from '@most/scheduler'
+import { Stream, Sink, Scheduler, Disposable, Task, ScheduledTask } from '@most/types'
+import { newDefaultScheduler, cancelAllTasks, asap, newTimeline } from '@most/scheduler'
 import eventList from './event-list'
 import { StreamAttributes } from './attributes'
 
@@ -17,20 +17,31 @@ export interface TimedMsg<Msg> {
   msg?: Msg | { type: "__INIT__" };
 }
 
-export function createApplication<Model, Msg> (
-  mount: Element,
-  init: Model,
-  update: (model: Model, msg: TimedMsg<Msg>) => Model,
-  view: (model: Model) => StreamElement<Msg>
-): {
+export type TaskCreator<Msg> = (scheduler: Scheduler, sink: Sink<{eventStream: Stream<TimedMsg<Msg>>}>) => ScheduledTask | ScheduledTask[];
+
+interface ApplicationConfig<Msg, Model> {
+    mount: Element,
+    init: Model,
+    update: (model: Model, msg: TimedMsg<Msg>, scheduler: Scheduler) => Model | [Model, TaskCreator<Msg>],
+    view: (model: Model) => StreamElement<Msg>
+}
+
+export function createApplication<Model, Msg> (applicationConfig: ApplicationConfig<Msg, Model>): {
   applicationStream: Stream<{
     view: Element;
+    task?: TaskCreator<Msg>;
     eventStream: Stream<TimedMsg<Msg>>;
   }>;
-  eventSink: Sink<{ view?: Element; eventStream: Stream<TimedMsg<Msg>> }>;
+  applicationSink: Sink<{
+    view?: Element;
+    task?: TaskCreator<Msg>;
+    eventStream: Stream<TimedMsg<Msg>>;
+  }>;
   scheduler: Scheduler;
   run: () => Disposable;
 } {
+  const { mount, init, update, view } = applicationConfig
+
   let startTime // we set this when _run_ is called
   const scheduler = newDefaultScheduler()
 
@@ -49,16 +60,27 @@ export function createApplication<Model, Msg> (
 
   const applicationStream: Stream<{
     view: Element;
+    task?: TaskCreator<Msg>;
     eventStream: Stream<TimedMsg<Msg>>;
   }> = loop(
     (model: Model, timedMsg: TimedMsg<Msg>) => {
-      const nextModel = update(model, timedMsg)
+      let task
+      let nextModel
+
+      const updateResult = update(model, timedMsg, scheduler)
+      if (Array.isArray(updateResult)) {
+        [nextModel, task] = updateResult
+      } else {
+        nextModel = updateResult
+      }
+
       const nextView: StreamElement<Msg> = view(nextModel)
 
       return {
         seed: nextModel,
         value: {
           view: nextView,
+          task,
           eventStream: map(msg => {
             return { time: scheduler.currentTime(), msg }
           }, nextView.eventStream)
@@ -72,12 +94,25 @@ export function createApplication<Model, Msg> (
     }, startWith({ msg: { type: '__INIT__' }, time: undefined }, eventStream))
   )
 
-  const eventSink: Sink<{
+  const applicationSink: Sink<{
     view: Element;
+    task?: TaskCreator<Msg>;
     eventStream: Stream<TimedMsg<Msg>>;
   }> = {
     event: function (time, event) {
-      if (event.view) updateDOM(mount, event.view, { onBeforeElUpdated })
+      if (event.view) {
+        updateDOM(mount, event.view, { onBeforeElUpdated })
+      }
+
+      if (event.task) {
+        const timeline = newTimeline()
+        let tasks = event.task(scheduler, applicationSink)
+        if (!Array.isArray(tasks)) {
+          tasks = [tasks]
+        }
+        tasks.forEach(timeline.add.bind(timeline))
+        timeline.runTasks(0, (t) => t.run())
+      }
 
       const disposable = event.eventStream.run(
         {
@@ -104,21 +139,19 @@ export function createApplication<Model, Msg> (
 
   return {
     applicationStream,
-    eventSink,
+    applicationSink,
     scheduler,
     run: () => {
-      return applicationStream.run(eventSink, scheduler)
+      return applicationStream.run(applicationSink, scheduler)
     }
   }
 }
 
-export function fromDOMEvent (event, query: string | Element): Stream<Event> {
+export function fromDOMEvent (event, target: Element): Stream<Event> {
   // we need to bind this to the element _immediately_ or else this
   // won't be here for morphdoms onBeforeElUpdated hook
   let sink
   let scheduler
-
-  const target = query
 
   if (target) {
     target[event] = (e: Event) => {

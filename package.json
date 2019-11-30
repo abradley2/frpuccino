@@ -23,6 +23,7 @@
     "@most/core": "^1.5.0",
     "@most/scheduler": "^1.2.3",
     "@most/types": "^1.0.2",
+    "fluture": "^12.0.1",
     "mitt": "^1.2.0",
     "morphdom": "^2.5.10",
     "nanohtml": "^1.9.0"
