@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import { createElement, createApplication, TimedMsg } from '../lib/browser'
+import { createElement, createApplication, TimedAction } from '../lib/browser'
 
 const mount = document.createElement('div')
 document.body.appendChild(mount)
@@ -15,9 +15,9 @@ const init: State = {
 type Action =
   | { type: 'INCREMENT' }
 
-function update (state: State, timedAction: TimedMsg<Action>): State {
-  const { msg } = timedAction
-  switch (msg.type) {
+function update (state: State, timedAction: TimedAction<Action>): State {
+  const { action } = timedAction
+  switch (action.type) {
     case 'INCREMENT':
       return { ...state, count: state.count + 1 }
     default:

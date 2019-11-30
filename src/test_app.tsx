@@ -3,7 +3,7 @@ import {
   createApplication,
   createElement,
   StreamElement,
-  TimedMsg
+  TimedAction
 } from './lib/browser'
 import { propagateEventTask, now, at } from '@most/core'
 import { newTimeline, schedulerRelativeTo, delay } from '@most/scheduler'
@@ -29,7 +29,7 @@ const init: Model = {
   bravoFocused: false
 }
 
-type Msg =
+type Action =
   | { type: 'NOOP' }
   | { type: 'DISABLE_COUNTER' }
   | { type: 'BUTTON_CLICKED' }
@@ -91,15 +91,15 @@ function view (model: Model) {
   )
 }
 
-function update (model: Model, timedMsg: TimedMsg<Msg>): Model {
-  const { msg } = timedMsg
+function update (model: Model, timedAction: TimedAction<Action>): Model {
+  const { action } = timedAction
 
-  switch (msg.type) {
+  switch (action.type) {
     case 'BUTTON_CLICKED':
       return { ...model, count: model.count + 1 }
 
     case 'INPUT_CHANGED':
-      return { ...model, message: msg.value }
+      return { ...model, message: action.value }
 
     case 'HIDE_COUNTER':
       return { ...model, hideCounter: !model.hideCounter }
@@ -107,9 +107,9 @@ function update (model: Model, timedMsg: TimedMsg<Msg>): Model {
     case 'DISABLE_COUNTER':
       return { ...model, disableCounter: !model.disableCounter }
     case 'TOGGLE_ALPHA_FOCUS':
-      return { ...model, alphaFocused: msg.value }
+      return { ...model, alphaFocused: action.value }
     case 'TOGGLE_BRAVO_FOCUS':
-      return { ...model, bravoFocused: msg.value }
+      return { ...model, bravoFocused: action.value }
     default:
       return model
   }
@@ -120,7 +120,7 @@ const record = []
 const { run, scheduler } = createApplication({
   mount: document.getElementById('app'),
   init,
-  update: (model, msg: TimedMsg<Msg>) => {
+  update: (model, msg: TimedAction<Action>) => {
     record.push(msg)
     return update(model, msg)
   },

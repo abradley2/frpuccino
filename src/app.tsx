@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import { createElement, createApplication, TimedMsg, TaskCreator } from './lib/browser'
+import { createElement, createApplication, TimedAction, TaskCreator } from './lib/browser'
 import * as Fluture from 'fluture'
 import { run, map, take, now, propagateTask } from '@most/core'
 import { asap } from '@most/scheduler'
@@ -29,7 +29,7 @@ const makeRequest = () => {
         const time = scheduler.currentTime()
         const eventStream = now({
           time,
-          msg: {
+          action: {
             type: INCREMENT,
             value: 100
           }
@@ -61,8 +61,9 @@ function createTimeoutTask (scheduler: Scheduler, sink): ScheduledTask {
   return asap(task, scheduler)
 }
 
-function update (state: State, timedMsg: TimedMsg<Action>): State | [State, TaskCreator<Action>] {
-  const action = timedMsg.msg
+function update (state: State, timedAction: TimedAction<Action>): State | [State, TaskCreator<Action>] {
+  const { action } = timedAction
+
   switch (action.type) {
     case INCREMENT:
       return { ...state, count: state.count + 1 }

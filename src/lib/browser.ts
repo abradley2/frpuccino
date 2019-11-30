@@ -1,58 +1,86 @@
-import { startWith, loop, empty, merge, map, take } from '@most/core'
+import { startWith, loop, empty, merge, map, take, propagateEventTask } from '@most/core'
 import updateDOM from 'morphdom'
 import mitt from 'mitt'
-import { Stream, Sink, Scheduler, Disposable, Task, ScheduledTask } from '@most/types'
-import { newDefaultScheduler, cancelAllTasks, asap, newTimeline } from '@most/scheduler'
+import {
+  Stream,
+  Sink,
+  Scheduler,
+  Disposable,
+  Task,
+  ScheduledTask
+} from '@most/types'
+import {
+  newDefaultScheduler,
+  cancelAllTasks,
+  asap,
+  newTimeline,
+  delay
+} from '@most/scheduler'
 import eventList from './event-list'
 import { StreamAttributes } from './attributes'
 
-const MSG = 'MSG'
+const ACTION = 'ACTION'
 
-export interface StreamElement<Msg> extends Element {
-  eventStream?: Stream<Msg>;
+export interface StreamElement<Action> extends Element {
+  eventStream?: Stream<Action>;
 }
 
-export interface TimedMsg<Msg> {
+export interface TimedAction<Action> {
   time?: number;
-  msg?: Msg | { type: "__INIT__" };
+  action?: Action | { type: "__INIT__" };
 }
 
-export type TaskCreator<Msg> = (scheduler: Scheduler, sink: Sink<{eventStream: Stream<TimedMsg<Msg>>}>) => ScheduledTask;
+export type TaskCreator<Action> = (
+  scheduler: Scheduler,
+  sink: Sink<{ eventStream: Stream<TimedAction<Action>> }>
+) => ScheduledTask;
 
-interface ApplicationConfig<Msg, Model> {
-    mount: Element,
-    init: Model,
-    update: (model: Model, msg: TimedMsg<Msg>, scheduler: Scheduler) => Model | [Model, TaskCreator<Msg> | TaskCreator<Msg>[]],
-    view: (model: Model) => StreamElement<Msg>
+export interface ApplicationConfig<Action, Model> {
+  mount: Element;
+  init: Model;
+  update: (
+    model: Model,
+    action: TimedAction<Action>,
+    scheduler: Scheduler
+  ) => Model | [Model, TaskCreator<Action> | TaskCreator<Action>[]];
+  view: (model: Model) => StreamElement<Action>;
+  scheduler?: Scheduler;
 }
 
-export function createApplication<Model, Msg> (applicationConfig: ApplicationConfig<Msg, Model>): {
-  applicationStream: Stream<{
-    view: Element;
-    task?: TaskCreator<Msg> | TaskCreator<Msg>[];
-    eventStream: Stream<TimedMsg<Msg>>;
-  }>;
-  applicationSink: Sink<{
-    view?: Element;
-    task?: TaskCreator<Msg> | TaskCreator<Msg>[];
-    eventStream: Stream<TimedMsg<Msg>>;
-  }>;
+export type ApplicationStream<Action> = Stream<{
+  view: Element;
+  task?: TaskCreator<Action> | TaskCreator<Action>[];
+  eventStream: Stream<TimedAction<Action>>;
+}>;
+
+export type ApplicationSink<Action> = Sink<{
+  view?: Element;
+  task?: TaskCreator<Action> | TaskCreator<Action>[];
+  eventStream: Stream<TimedAction<Action>>;
+}>;
+
+export function createApplication<Model, Action> (
+  applicationConfig: ApplicationConfig<Action, Model>
+): {
+  applicationStream: ApplicationStream<Action>;
+  applicationSink: ApplicationSink<Action>;
   scheduler: Scheduler;
   run: () => Disposable;
 } {
   const { mount, init, update, view } = applicationConfig
 
   let startTime // we set this when _run_ is called
+  const timeline = []
   const scheduler = newDefaultScheduler()
 
   const eventSource = mitt()
-  const eventStream: Stream<TimedMsg<Msg>> = {
+  const eventStream: Stream<TimedAction<Action>> = {
     run: (sink, scheduler) => {
-      const handleMsg = msg => sink.event(scheduler.currentTime(), msg)
-      eventSource.on(MSG, handleMsg)
+      const handleMsg = action => sink.event(scheduler.currentTime(), action)
+      eventSource.on(ACTION, handleMsg)
       return {
         dispose: () => {
-          eventSource.off(MSG, handleMsg)
+          eventSource.off(ACTION, handleMsg)
         }
       }
     }
@@ -60,44 +88,47 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
 
   const applicationStream: Stream<{
     view: Element;
-    task?: TaskCreator<Msg> | TaskCreator<Msg>[];
-    eventStream: Stream<TimedMsg<Msg>>;
+    task?: TaskCreator<Action> | TaskCreator<Action>[];
+    eventStream: Stream<TimedAction<Action>>;
   }> = loop(
-    (model: Model, timedMsg: TimedMsg<Msg>) => {
+    (model: Model, timedAction: TimedAction<Action>) => {
       let task
       let nextModel
 
-      const updateResult = update(model, timedMsg, scheduler)
-      if (Array.isArray(updateResult) && typeof updateResult[1] === 'function') {
+      const updateResult = update(model, timedAction, scheduler)
+      if (
+        Array.isArray(updateResult) &&
+        typeof updateResult[1] === 'function'
+      ) {
         [nextModel, task] = updateResult
       } else {
         nextModel = updateResult
       }
 
-      const nextView: StreamElement<Msg> = view(nextModel)
+      const nextView: StreamElement<Action> = view(nextModel)
 
       return {
         seed: nextModel,
         value: {
           view: nextView,
           task,
-          eventStream: map(msg => {
-            return { time: scheduler.currentTime(), msg }
+          eventStream: map(action => {
+            return { time: scheduler.currentTime(), action }
           }, nextView.eventStream)
         }
       }
     },
     init,
-    map((timedMsg: TimedMsg<Msg>) => {
-      if (timedMsg.time) return timedMsg
-      return Object.assign(timedMsg, { time: scheduler.currentTime() })
-    }, startWith({ msg: { type: '__INIT__' }, time: undefined }, eventStream))
+    map((timedAction: TimedAction<Action>) => {
+      if (timedAction.time) return timedAction
+      return Object.assign(timedAction, { time: scheduler.currentTime() })
+    }, startWith({ action: { type: '__INIT__' }, time: undefined }, eventStream))
   )
 
   const applicationSink: Sink<{
     view: Element;
-    task?: TaskCreator<Msg> | TaskCreator<Msg>[];
-    eventStream: Stream<TimedMsg<Msg>>;
+    task?: TaskCreator<Action> | TaskCreator<Action>[];
+    eventStream: Stream<TimedAction<Action>>;
   }> = {
     event: function (time, event) {
       if (event.view) {
@@ -105,29 +136,26 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
       }
 
       if (event.task) {
-        const tasks = Array.isArray(event.task)
-          ? event.task
-          : [event.task]
-
+        const tasks = Array.isArray(event.task) ? event.task : [event.task]
         const timeline = newTimeline()
 
-        tasks.forEach((t) => {
+        tasks.forEach(t => {
           const task = t(scheduler, applicationSink)
           timeline.add(task)
         })
-        timeline.runTasks(0, (t) => t.run())
+        timeline.runTasks(0, t => t.run())
       }
 
       const disposable = event.eventStream.run(
         {
-          event: (time, timedMsg) => {
-            eventSource.emit(MSG, timedMsg)
+          event: (time, timedAction) => {
+            eventSource.emit(ACTION, timedAction)
           },
           end: () => {
             disposable.dispose()
           },
           error: (_, err) => {
-            console.error('error thrown in event source: ' + err.message)
+            console.error(err)
             throw err
           }
         },
@@ -137,6 +165,7 @@ export function createApplication<Model, Msg> (applicationConfig: ApplicationCon
     end: () => {},
     error: (_, err) => {
       console.error(err)
+      throw err
     }
   }
 
@@ -176,12 +205,12 @@ export function fromDOMEvent (event, target: Element): Stream<Event> {
   }
 }
 
-export function createElement<Msg> (
+export function createElement<Action> (
   tag: string,
-  attributes: StreamAttributes<Msg>,
+  attributes: StreamAttributes<Action>,
   ...children
-): StreamElement<Msg> {
-  const el: StreamElement<Msg> = document.createElement(tag)
+): StreamElement<Action> {
+  const el: StreamElement<Action> = document.createElement(tag)
 
   el.eventStream = empty()
 
