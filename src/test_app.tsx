@@ -2,9 +2,9 @@
 import {
   createApplication,
   createElement,
-  StreamElement,
-  TimedAction
+  StreamElement
 } from './lib/browser'
+import { record } from './lib/record-application'
 import { propagateEventTask, now, at } from '@most/core'
 import { newTimeline, schedulerRelativeTo, delay } from '@most/scheduler'
 import { Task } from '@most/types'
@@ -30,13 +30,14 @@ const init: Model = {
 }
 
 type Action =
-  | { type: 'NOOP' }
-  | { type: 'DISABLE_COUNTER' }
-  | { type: 'BUTTON_CLICKED' }
-  | { type: 'HIDE_COUNTER' }
-  | { type: 'INPUT_CHANGED'; value: string }
-  | { type: 'TOGGLE_ALPHA_FOCUS'; value: boolean }
-  | { type: 'TOGGLE_BRAVO_FOCUS'; value: boolean };
+  | { type: "__INIT__" }
+  | { type: "NOOP" }
+  | { type: "DISABLE_COUNTER" }
+  | { type: "BUTTON_CLICKED" }
+  | { type: "HIDE_COUNTER" }
+  | { type: "INPUT_CHANGED"; value: string }
+  | { type: "TOGGLE_ALPHA_FOCUS"; value: boolean }
+  | { type: "TOGGLE_BRAVO_FOCUS"; value: boolean };
 
 function view (model: Model) {
   return (
@@ -50,12 +51,8 @@ function view (model: Model) {
         </button>
         {!model.hideCounter && (
           <button
-            id='counter'
-            onclick={
-              model.disableCounter
-                ? undefined
-                : () => ({ type: 'BUTTON_CLICKED' })
-            }
+            id="counter"
+            onclick={() => ({ type: 'BUTTON_CLICKED' })}
           >
             Clicked {model.count} times!
           </button>
@@ -90,10 +87,8 @@ function view (model: Model) {
     </div>
   )
 }
-
-function update (model: Model, timedAction: TimedAction<Action>): Model {
-  const { action } = timedAction
-
+// - maybe for the same reason all those custom PC builds are gargantuan towers
+function update (model: Model, action: Action): Model {
   switch (action.type) {
     case 'BUTTON_CLICKED':
       return { ...model, count: model.count + 1 }
@@ -115,53 +110,32 @@ function update (model: Model, timedAction: TimedAction<Action>): Model {
   }
 }
 
-const record = []
-
-const { run, scheduler } = createApplication({
+const { run, scheduler, eventSource } = createApplication({
   mount: document.getElementById('app'),
   init,
-  update: (model, msg: TimedAction<Action>) => {
-    record.push(msg)
-    return update(model, msg)
-  },
+  update,
   view
 })
 
-run()
+const playback = record(
+  eventSource,
+  scheduler
+)
+
+const disposable = run({ type: '__INIT__' })
 
 setTimeout(cloneApplication, 5000)
 
 function cloneApplication () {
-  const startTime = record[0].time
-  // first we need to create a new place on the document to hose the cloned application
   const appClone = document.createElement('div')
   document.body.appendChild(appClone)
 
-  // now we need a new stream and sink for the application. We can reuse our init, update, and
-  // view function- we're just passing in a new place to host the application
-  const { applicationStream, applicationSink } = createApplication({
+  disposable.dispose()
+
+  playback({
     mount: appClone,
     init,
     update,
     view
   })
-
-  const offset = scheduler.currentTime() - startTime
-  const relativeScheduler = schedulerRelativeTo(offset, scheduler)
-
-  const timeline = newTimeline()
-
-  // now that our scheduler has the time set to when the application began we can simple schedule
-  // our recorded events to be played _at the time they happened_
-  record.forEach(event => {
-    const eventTask = propagateEventTask(
-      { eventStream: now(event) },
-      applicationSink
-    )
-    timeline.add(delay(event.time - startTime, eventTask, scheduler))
-  })
-
-  applicationStream.run(applicationSink, relativeScheduler)
-
-  timeline.runTasks(relativeScheduler.currentTime(), task => task.run())
 }

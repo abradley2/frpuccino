@@ -1,4 +1,13 @@
-import { startWith, loop, empty, merge, map, take, propagateEventTask } from '@most/core'
+import {
+  startWith,
+  loop,
+  empty,
+  merge,
+  map,
+  take,
+  propagateEventTask,
+  now
+} from '@most/core'
 import updateDOM from 'morphdom'
 import mitt from 'mitt'
 import {
@@ -19,7 +28,9 @@ import {
 import eventList from './event-list'
 import { StreamAttributes } from './attributes'
 
-const ACTION = 'ACTION'
+export type Emitter = mitt.Emitter;
+
+export const ACTION = 'ACTION'
 
 export interface StreamElement<Action> extends Element {
   eventStream?: Stream<Action>;
@@ -27,7 +38,7 @@ export interface StreamElement<Action> extends Element {
 
 export interface TimedAction<Action> {
   time?: number;
-  action?: Action | { type: "__INIT__" };
+  action?: Action;
 }
 
 export type TaskCreator<Action> = (
@@ -35,16 +46,19 @@ export type TaskCreator<Action> = (
   sink: Sink<{ eventStream: Stream<TimedAction<Action>> }>
 ) => ScheduledTask;
 
+export type UpdateResult<Model, Action> = Model | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
+
 export interface ApplicationConfig<Action, Model> {
   mount: Element;
   init: Model;
   update: (
     model: Model,
-    action: TimedAction<Action>,
+    action: Action,
     scheduler: Scheduler
-  ) => Model | [Model, TaskCreator<Action> | TaskCreator<Action>[]];
+  ) => UpdateResult<Model, Action>;
   view: (model: Model) => StreamElement<Action>;
   scheduler?: Scheduler;
+  runTasks?: boolean;
 }
 
 export type ApplicationStream<Action> = Stream<{
@@ -59,19 +73,32 @@ export type ApplicationSink<Action> = Sink<{
   eventStream: Stream<TimedAction<Action>>;
 }>;
 
+export function createActionEvent<Action> (
+  action: Action,
+  scheduler: Scheduler
+): {
+  eventStream: Stream<TimedAction<Action>>;
+} {
+  return {
+    eventStream: now({
+      time: scheduler.currentTime(),
+      action
+    })
+  }
+}
+
 export function createApplication<Model, Action> (
   applicationConfig: ApplicationConfig<Action, Model>
 ): {
   applicationStream: ApplicationStream<Action>;
   applicationSink: ApplicationSink<Action>;
   scheduler: Scheduler;
-  run: () => Disposable;
+  run: (action: Action) => Disposable;
+  eventSource: mitt.Emitter;
 } {
-  const { mount, init, update, view } = applicationConfig
+  const { mount, init, update, view, runTasks } = applicationConfig
 
-  let startTime // we set this when _run_ is called
-  const timeline = []
-  const scheduler = newDefaultScheduler()
+  const scheduler = applicationConfig.scheduler || newDefaultScheduler()
 
   const eventSource = mitt()
   const eventStream: Stream<TimedAction<Action>> = {
@@ -95,7 +122,7 @@ export function createApplication<Model, Action> (
       let task
       let nextModel
 
-      const updateResult = update(model, timedAction, scheduler)
+      const updateResult = update(model, timedAction.action, scheduler)
       if (
         Array.isArray(updateResult) &&
         typeof updateResult[1] === 'function'
@@ -112,17 +139,15 @@ export function createApplication<Model, Action> (
         value: {
           view: nextView,
           task,
-          eventStream: map(action => {
-            return { time: scheduler.currentTime(), action }
-          }, nextView.eventStream)
+          eventStream: take(
+            1,
+            map(action => ({ action }), nextView.eventStream)
+          )
         }
       }
     },
     init,
-    map((timedAction: TimedAction<Action>) => {
-      if (timedAction.time) return timedAction
-      return Object.assign(timedAction, { time: scheduler.currentTime() })
-    }, startWith({ action: { type: '__INIT__' }, time: undefined }, eventStream))
+    eventStream
   )
 
   const applicationSink: Sink<{
@@ -135,7 +160,7 @@ export function createApplication<Model, Action> (
         updateDOM(mount, event.view, { onBeforeElUpdated })
       }
 
-      if (event.task) {
+      if (event.task && runTasks !== false) {
         const tasks = Array.isArray(event.task) ? event.task : [event.task]
         const timeline = newTimeline()
 
@@ -149,6 +174,9 @@ export function createApplication<Model, Action> (
       const disposable = event.eventStream.run(
         {
           event: (time, timedAction) => {
+            if (!timedAction.time) {
+              timedAction.time = time
+            }
             eventSource.emit(ACTION, timedAction)
           },
           end: () => {
@@ -173,13 +201,18 @@ export function createApplication<Model, Action> (
     applicationStream,
     applicationSink,
     scheduler,
-    run: () => {
-      return applicationStream.run(applicationSink, scheduler)
+    eventSource,
+    run: (action: Action) => {
+      const disposable = applicationStream.run(applicationSink, scheduler)
+
+      eventSource.emit(ACTION, { time: scheduler.currentTime(), action })
+
+      return disposable
     }
   }
 }
 
-export function fromDOMEvent (event, target: Element): Stream<Event> {
+function fromDOMEvent (event, target: Element): Stream<Event> {
   // we need to bind this to the element _immediately_ or else this
   // won't be here for morphdoms onBeforeElUpdated hook
   let sink

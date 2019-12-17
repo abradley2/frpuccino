@@ -1,58 +1,59 @@
 import {
-  ApplicationConfig,
-  ApplicationSink,
-  createApplication
+  createApplication,
+  Emitter,
+  ACTION,
+  TimedAction
 } from '../lib/browser'
 import { Scheduler } from '@most/types'
 import { schedulerRelativeTo, newTimeline, delay } from '@most/scheduler'
-import { propagateEventTask } from '@most/core'
+import { propagateEventTask, now } from '@most/core'
 
-function record<Model, Action> (
-  _applicationSink: ApplicationSink<Action>,
-  _scheduler: Scheduler
-) {
+export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
   let startTime
-  const events = []
+  const actions = []
 
-  _applicationSink.event = (fn => (time, event) => {
-    if (!startTime) {
-      startTime = time
-    }
-    events.push({ time, event })
-    return fn.call(_applicationSink, time, event)
-  })(_applicationSink.event)
+  const handleAction = (timedAction: TimedAction<Action>) => {
+    if (!startTime && timedAction.time) startTime = timedAction.time - 500
+    actions.push(timedAction)
+  }
 
-  const playback = (mount, view, init, update) => {
-    const scheduler = schedulerRelativeTo(
-      startTime - _scheduler.currentTime(),
-      _scheduler
+  emitter.on(ACTION, handleAction)
+
+  return function playback ({ mount, update, view, init }) {
+    emitter.off(ACTION, handleAction)
+
+    const replayScheduler = schedulerRelativeTo(
+      (startTime - scheduler.currentTime()) * -1,
+      scheduler
     )
-    const { applicationSink, applicationStream, run } = createApplication({
-      mount,
-      init,
+
+    const {
+      applicationSink,
+      applicationStream,
+      eventSource
+    } = createApplication({
       view,
       update,
-      scheduler
+      init,
+      mount,
+      scheduler: replayScheduler,
+      runTasks: false
     })
-
-    applicationStream.run(applicationSink, scheduler)
 
     const timeline = newTimeline()
 
-    events.forEach(({ time, event }) => {
-      const taskDelay = time - startTime
-
-      timeline.add(
-        delay(
-          time - startTime,
-          propagateEventTask(event, applicationSink),
-          scheduler
-        )
+    actions.forEach(timedAction => {
+      const task = delay(
+        timedAction.time - startTime,
+        propagateEventTask({ eventStream: now(timedAction) }, applicationSink),
+        replayScheduler
       )
+
+      timeline.add(task)
     })
 
-    run()
+    applicationStream.run(applicationSink, replayScheduler)
 
-    timeline.runTasks(scheduler.currentTime(), (t) => t.run())
+    timeline.runTasks(replayScheduler.currentTime(), t => t.run())
   }
 }
