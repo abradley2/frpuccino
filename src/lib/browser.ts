@@ -3,6 +3,7 @@ import {
   loop,
   empty,
   merge,
+  mergeArray,
   map,
   take,
   propagateEventTask,
@@ -34,6 +35,52 @@ export const ACTION = 'ACTION'
 
 export interface StreamElement<Action> extends Element {
   eventStream?: Stream<Action>;
+}
+
+function cloneEventStream(el: Element, source: Element): Stream<any> {
+  const eventStreams: Stream<any>[] = []
+  Object.keys(eventList).forEach((eventName) => {
+    if (source[eventName] && source[eventName].mapFn) {
+      const mapEvent = source[eventName].mapFn
+
+      eventStreams.push(
+        map(
+          mapEvent,
+          fromDOMEvent(eventName, el, mapEvent)
+        )
+      )
+    }
+  })
+
+  let eventStream = mergeArray(eventStreams)
+
+  for (let i = 0; i < el.children.length; i ++) {
+    const child = el.children[i]
+    const sourceChild = source.children[i]
+    eventStream = merge(
+      eventStream,
+      cloneEventStream(child, sourceChild)
+    )
+  }
+
+  return eventStream
+}
+
+export function cloneNode<a>(): StreamElement<any> {
+  const toNode: StreamElement<a> = this
+  const fromNode = document.createElement('div')
+
+  updateDOM(fromNode, Element.prototype.cloneNode.call(toNode, true))
+
+  return (fromNode as StreamElement<any>)
+}
+
+export function mapElement<a, b>(mapFn: (from: a) => b, toNode: StreamElement<a>): StreamElement<b> {
+  const next: StreamElement<a | b> = cloneNode.call(toNode)
+
+  next.eventStream = map(mapFn, cloneEventStream(next, toNode))
+
+  return next
 }
 
 export interface TimedAction<Action> {
@@ -212,7 +259,7 @@ export function createApplication<Model, Action> (
   }
 }
 
-function fromDOMEvent (event, target: Element): Stream<Event> {
+function fromDOMEvent <Action>(event, target: Element, mapFn: (Event) => Action): Stream<Event> {
   // we need to bind this to the element _immediately_ or else this
   // won't be here for morphdoms onBeforeElUpdated hook
   let sink
@@ -222,6 +269,7 @@ function fromDOMEvent (event, target: Element): Stream<Event> {
     target[event] = (e: Event) => {
       if (sink) sink.event(scheduler.currentTime(), e)
     }
+    target[event].mapFn = mapFn
   }
 
   return {
@@ -251,11 +299,12 @@ export function createElement<Action> (
     Object.keys(attributes).forEach(function (name) {
       const val = attributes[name]
       if (eventList[name] && val) {
+        const mapEvent = val.constructor === Function ? val : () => val
         el.eventStream = merge(
           el.eventStream,
           map(
-            val.constructor === Function ? val : () => val,
-            fromDOMEvent(name, el)
+            mapEvent,
+            fromDOMEvent(name, el, mapEvent)
           )
         )
         return
@@ -297,6 +346,7 @@ export function createElement<Action> (
     el.appendChild(child)
 
     el.eventStream = merge(el.eventStream, child.eventStream)
+    el.cloneNode = cloneNode
     child.eventStream = null
   })
 
