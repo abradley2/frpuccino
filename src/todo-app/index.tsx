@@ -1,9 +1,9 @@
 /** @jsx createElement */
+import "./styles.css"
 import {
   createElement,
   createApplication,
   UpdateResult,
-  createActionEvent,
   ApplicationSink,
   TaskCreator
 } from '../lib/browser'
@@ -57,13 +57,13 @@ type Action = Init | NewTodoEdited | AddTodoClicked | TodoCreated;
 
 /** ACTION CREATORS */
 
-function addTodoClicked (): Action {
+function addTodoClicked(): Action {
   return {
     type: ADD_TODO_CLICKED
   }
 }
 
-function newTodoEdited (value: string): Action {
+function newTodoEdited(value: string): Action {
   return {
     type: NEW_TODO_EDITED,
     value
@@ -77,10 +77,10 @@ const init: Model = {
   todos: []
 }
 
-function createTodoTask (title: string) {
+function createTodoTask(title: string) {
   return function (
-    scheduler: Scheduler,
-    sink: ApplicationSink<Action>
+    sink: ApplicationSink<Action>,
+    scheduler: Scheduler
   ): ScheduledTask {
     return asap(
       {
@@ -93,21 +93,17 @@ function createTodoTask (title: string) {
             title
           }
 
-          const event = {
-            eventStream: now({ time, action })
-          }
-
-          sink.event(time, event)
+          now({ action }).run(sink, scheduler)
         },
-        error: () => {},
-        dispose: () => {}
+        error: () => { },
+        dispose: () => { }
       },
       scheduler
     )
   }
 }
 
-function update (model: Model, action: Action): UpdateResult<Model, Action> {
+function update(model: Model, action: Action): UpdateResult<Model, Action> {
   switch (action.type) {
     case NEW_TODO_EDITED:
       return { ...model, newTodoTitle: action.value }
@@ -135,20 +131,21 @@ function update (model: Model, action: Action): UpdateResult<Model, Action> {
   }
 }
 
-function view (model: Model) {
+function view(model: Model) {
   return (
     <div>
       <div>
         <input
+          className="textinput textinput--todotitle"
           value={model.newTodoTitle}
           oninput={e => newTodoEdited(e.target.value)}
         />
-        <button onclick={addTodoClicked}>SUBMIT</button>
+        <button className="button button--submit" onclick={addTodoClicked}>SUBMIT ME</button>
       </div>
       <div>
         {model.todos.map(todo => {
           return (
-            <div>
+            <div className="todo">
               <b>{todo.title}</b>
               <br />
               <small>{todo.uniqueId}</small>
@@ -160,7 +157,8 @@ function view (model: Model) {
   )
 }
 
-const mount = document.getElementById('app')
+const mount = document.createElement('div')
+document.body.appendChild(mount)
 
 const { run, scheduler, eventSource } = createApplication({
   mount,
@@ -176,7 +174,7 @@ const playback = record(
 
 const disposable = run({ type: INIT })
 
-function cloneApplication () {
+function cloneApplication() {
   const appClone = document.createElement('div')
   document.body.appendChild(appClone)
 
@@ -190,7 +188,15 @@ function cloneApplication () {
   })
 }
 
-document.getElementById('playback').addEventListener('click', function () {
-  cloneApplication()
-  this.parentElement.removeChild(this)
+const playbackButton = document.createElement('button')
+
+Object.assign(playbackButton, {
+  className: 'button button--playback',
+  innerText: 'Playback',
+  onclick: function () {
+    cloneApplication()
+    this.parentElement.removeChild(this)
+  }
 })
+
+document.body.appendChild(playbackButton)

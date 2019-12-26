@@ -5,10 +5,10 @@ import {
   TimedAction
 } from '../lib/browser'
 import { Scheduler } from '@most/types'
-import { schedulerRelativeTo, newTimeline, delay } from '@most/scheduler'
-import { propagateEventTask, now } from '@most/core'
+import { schedulerRelativeTo, delay, asap } from '@most/scheduler'
+import { propagateEventTask, now, at, merge, mergeArray } from '@most/core'
 
-export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
+export function record<Model, Action>(emitter: Emitter, scheduler: Scheduler) {
   let startTime
   const actions = []
 
@@ -19,7 +19,7 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
 
   emitter.on(ACTION, handleAction)
 
-  return function playback ({ mount, update, view, init }) {
+  return function playback({ mount, update, view, init }) {
     emitter.off(ACTION, handleAction)
 
     const replayScheduler = schedulerRelativeTo(
@@ -29,8 +29,7 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
 
     const {
       applicationSink,
-      applicationStream,
-      eventSource
+      applicationStream
     } = createApplication({
       view,
       update,
@@ -40,20 +39,10 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
       runTasks: false
     })
 
-    const timeline = newTimeline()
+    const eventStream = mergeArray(actions.map((action) => {
+      return at(action.time, action)
+    }))
 
-    actions.forEach(timedAction => {
-      const task = delay(
-        timedAction.time - startTime,
-        propagateEventTask({ eventStream: now(timedAction) }, applicationSink),
-        replayScheduler
-      )
-
-      timeline.add(task)
-    })
-
-    applicationStream.run(applicationSink, replayScheduler)
-
-    timeline.runTasks(replayScheduler.currentTime(), t => t.run())
+    merge(applicationStream, eventStream).run(applicationSink, replayScheduler)
   }
 }

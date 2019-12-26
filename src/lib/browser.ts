@@ -54,7 +54,7 @@ function cloneEventStream(el: Element, source: Element): Stream<any> {
 
   let eventStream = mergeArray(eventStreams)
 
-  for (let i = 0; i < el.children.length; i ++) {
+  for (let i = 0; i < el.children.length; i++) {
     const child = el.children[i]
     const sourceChild = source.children[i]
     eventStream = merge(
@@ -89,8 +89,8 @@ export interface TimedAction<Action> {
 }
 
 export type TaskCreator<Action> = (
-  scheduler: Scheduler,
-  sink: Sink<{ eventStream: Stream<TimedAction<Action>> }>
+  sink: Sink<{ eventStream: Stream<TimedAction<Action>> }>,
+  scheduler: Scheduler
 ) => ScheduledTask;
 
 export type UpdateResult<Model, Action> = Model | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
@@ -108,33 +108,17 @@ export interface ApplicationConfig<Action, Model> {
   runTasks?: boolean;
 }
 
-export type ApplicationStream<Action> = Stream<{
-  view: Element;
-  task?: TaskCreator<Action> | TaskCreator<Action>[];
-  eventStream: Stream<TimedAction<Action>>;
-}>;
+export type ApplicationStream<Action> = Stream<ApplicationEvent<Action>>;
 
-export type ApplicationSink<Action> = Sink<{
+export type ApplicationSink<Action> = Sink<TimedAction<Action> | ApplicationEvent<Action>>;
+
+export interface ApplicationEvent<Action> {
   view?: Element;
   task?: TaskCreator<Action> | TaskCreator<Action>[];
   eventStream: Stream<TimedAction<Action>>;
-}>;
-
-export function createActionEvent<Action> (
-  action: Action,
-  scheduler: Scheduler
-): {
-  eventStream: Stream<TimedAction<Action>>;
-} {
-  return {
-    eventStream: now({
-      time: scheduler.currentTime(),
-      action
-    })
-  }
 }
 
-export function createApplication<Model, Action> (
+export function createApplication<Model, Action>(
   applicationConfig: ApplicationConfig<Action, Model>
 ): {
   applicationStream: ApplicationStream<Action>;
@@ -197,12 +181,18 @@ export function createApplication<Model, Action> (
     eventStream
   )
 
-  const applicationSink: Sink<{
-    view: Element;
-    task?: TaskCreator<Action> | TaskCreator<Action>[];
-    eventStream: Stream<TimedAction<Action>>;
-  }> = {
-    event: function (time, event) {
+  const applicationSink: Sink<Action | ApplicationEvent<Action>> = {
+    event: function (time, event_) {
+      const action = isAction(event_)
+        ? event_
+        : null
+
+      if (action) {
+        const applicationEvent: ApplicationEvent<Action> = { eventStream: now(action) }
+        return this.event.call(this, time, applicationEvent)
+      }
+
+      const event = event_ as ApplicationEvent<Action>
       if (event.view) {
         updateDOM(mount, event.view, { onBeforeElUpdated })
       }
@@ -212,7 +202,7 @@ export function createApplication<Model, Action> (
         const timeline = newTimeline()
 
         tasks.forEach(t => {
-          const task = t(scheduler, applicationSink)
+          const task = t(applicationSink, scheduler)
           timeline.add(task)
         })
         timeline.runTasks(0, t => t.run())
@@ -237,7 +227,7 @@ export function createApplication<Model, Action> (
         scheduler
       )
     },
-    end: () => {},
+    end: () => { },
     error: (_, err) => {
       console.error(err)
       throw err
@@ -259,7 +249,7 @@ export function createApplication<Model, Action> (
   }
 }
 
-function fromDOMEvent <Action>(event, target: Element, mapFn: (Event) => Action): Stream<Event> {
+function fromDOMEvent<Action>(event, target: Element, mapFn: (Event) => Action): Stream<Event> {
   // we need to bind this to the element _immediately_ or else this
   // won't be here for morphdoms onBeforeElUpdated hook
   let sink
@@ -286,7 +276,7 @@ function fromDOMEvent <Action>(event, target: Element, mapFn: (Event) => Action)
   }
 }
 
-export function createElement<Action> (
+export function createElement<Action>(
   tag: string,
   attributes: StreamAttributes<Action>,
   ...children
@@ -321,7 +311,7 @@ export function createElement<Action> (
     })
   }
 
-  children.forEach(function appendChild (child) {
+  children.forEach(function appendChild(child) {
     if (typeof child === 'number') {
       const textNode = document.createTextNode(child.toString())
       el.appendChild(textNode)
@@ -353,7 +343,7 @@ export function createElement<Action> (
   return el
 }
 
-export function render (target, elementTree) {
+export function render(target, elementTree) {
   if (target.children.length === 0) {
     target.appendChild(elementTree)
   }
@@ -362,7 +352,7 @@ export function render (target, elementTree) {
 }
 
 // morphdom does not copy over event handlers so they need to be re-bound
-function onBeforeElUpdated (fromEl: Element, toEl: Element): boolean {
+function onBeforeElUpdated(fromEl: Element, toEl: Element): boolean {
   Object.keys(eventList).forEach(eventHandler => {
     if (toEl[eventHandler]) {
       fromEl[eventHandler] = toEl[eventHandler]
@@ -371,4 +361,9 @@ function onBeforeElUpdated (fromEl: Element, toEl: Element): boolean {
     }
   })
   return true
+}
+
+function isAction<Action>(sut: TimedAction<Action> | ApplicationEvent<Action>): sut is TimedAction<Action> {
+  const applicationEvent = sut as ApplicationEvent<Action>
+  return !applicationEvent.eventStream
 }
