@@ -1,8 +1,6 @@
 /** @jsx createElement */
-import { createElement, createApplication, TimedAction } from '../lib/browser'
-
-const mount = document.createElement('div')
-document.body.appendChild(mount)
+import { createElement, createApplication } from '../lib/browser'
+Object.assign(window, { createElement })
 
 interface State {
   count: number;
@@ -13,10 +11,10 @@ const init: State = {
 }
 
 type Action =
+  | { type: 'START' }
   | { type: 'INCREMENT' }
 
-function update (state: State, timedAction: TimedAction<Action>): State {
-  const { action } = timedAction
+function update (state: State, action: Action): State {
   switch (action.type) {
     case 'INCREMENT':
       return { ...state, count: state.count + 1 }
@@ -31,11 +29,12 @@ function view (state: State) {
   </button>
 }
 
-const { applicationStream, applicationSink, scheduler } = createApplication({
+const mount = document.createElement('div')
+document.body.appendChild(mount)
+
+createApplication({
   mount,
   init,
   update,
   view
-})
-
-applicationStream.run(applicationSink, scheduler)
+}).run({ type: 'START' })

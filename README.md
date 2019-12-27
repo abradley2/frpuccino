@@ -1,64 +1,31 @@
-# StreamElement
+# FRPuccinno
 
-An experiment in creating a `React.createElement`-like function that 
-takes in JSX and outputs an element with an attached [Most.js](https://github.com/mostjs/core) event stream
-that outputs mapped DOM events
+:warning: This is still in alpha development. I would love to get more people
+testing this out and finding issues to be stamped out, but I wouldn't recommend
+using this on any big projects that require a reliable view layer just yet! :warning:
 
-For example:
+FRPuccino is a small UI library built on the foundation of [Most.js](https://github.com/mostjs/core)
 
-**src/app.tsx**
+It's inspired heavily by [Elm](https://elm-lang.org/) and [Cycle.js](https://cycle.js.org/)
+
+Here's a short "counter" example:
 ```
-import { createElement, StreamElement } from './lib/browser'
+import { createElement, createApplication } from '@abradley2/frpuccino'
 
-type Msg =
-  | { type: 'BUTTON_CLICKED' }
+function update (model, addValue) {
+  return model + addValue
+}
 
-function view (): StreamElement<Msg> {
+function view () {
   return <div>
-    <button onclick={ () => ({ type: 'BUTTON_CLICKED' }) }>
-      Click me!
-    </button>
+    <button onclick={1}>Clicked {value} times!</button>
   </div>
 }
-```
 
-Where `StreamElement` is:
-
-```
-import { Stream } from '@most/types'
-
-export interface StreamElement<Msg> extends Element {
-  eventStream: Stream<Msg>
-}
-```
-
-This enables some cool stuff! With this we can create an application runtime
-that loops the resulting event stream from the `view` into an `update` function, which feeds
-that new model back into the `view` again, and so on and so forth.
-
-Here's an actual working example you can try in **src/app.tsx**
-
-```
-/** @jsx createElement */
-import { createApplication, createElement } from "./lib/browser";
-
-
-function view (model) {
-  return <button onclick={ () => ({type: 'CLICK'}) }>
-    Clicked {model} times!
-  </button>
-}
-
-function update (model, msg) {
-  switch (msg.type) {
-    case 'CLICK':
-      return model + 1
-    default:
-      return model
-  }
-}
-
-const node = document.getElementById('app')
-
-createApplication(node, 0, update, view)
+createApplication({
+  mount: document.getElementById('app'),
+  update,
+  view,
+  init: 0
+}).run(0)
 ```

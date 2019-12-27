@@ -1,15 +1,15 @@
 {
-  "name": "personal-site",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "@abradley2/frpuccino",
+  "version": "1.0.0-alpha.1",
+  "description": "A lightweight reactive UI library built on @most/core",
+  "main": "./dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "parcel serve ./src/index.html",
     "lint": "standardx --fix ./**/*.tsx && standardx --fix ./**/*.ts"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Tony Bradley",
+  "license": "MIT",
   "devDependencies": {
     "@types/node": "^13.1.1",
     "@typescript-eslint/eslint-plugin": "^2.6.1",
@@ -24,10 +24,8 @@
     "@most/core": "^1.5.0",
     "@most/scheduler": "^1.2.3",
     "@most/types": "^1.0.2",
-    "fluture": "^12.0.1",
     "mitt": "^1.2.0",
-    "morphdom": "^2.5.10",
-    "nanohtml": "^1.9.0"
+    "morphdom": "^2.5.10"
   },
   "eslintConfig": {
     "env": {

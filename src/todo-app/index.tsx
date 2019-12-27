@@ -85,8 +85,6 @@ function createTodoTask(title: string) {
     return asap(
       {
         run: () => {
-          const time = scheduler.currentTime()
-
           const action: Action = {
             type: TODO_CREATED,
             uniqueId: `${Math.random().toString().split('.')[1]}:${Date.now()}`,
