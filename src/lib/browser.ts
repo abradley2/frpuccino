@@ -93,7 +93,9 @@ export type TaskCreator<Action> = (
   scheduler: Scheduler
 ) => ScheduledTask;
 
-export type UpdateResult<Model, Action> = Model | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
+export type UpdateResult<Model, Action> =
+  | Model 
+  | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
 
 export interface ApplicationConfig<Action, Model> {
   mount: Element;
@@ -188,7 +190,9 @@ export function createApplication<Model, Action>(
         : null
 
       if (action) {
-        const applicationEvent: ApplicationEvent<Action> = { eventStream: now(action) }
+        const applicationEvent: ApplicationEvent<Action> = { 
+          eventStream: now(action)
+        }
         return this.event.call(this, time, applicationEvent)
       }
 
@@ -249,7 +253,11 @@ export function createApplication<Model, Action>(
   }
 }
 
-function fromDOMEvent<Action>(event, target: Element, mapFn: (Event) => Action): Stream<Event> {
+function fromDOMEvent<Action>(
+  event, 
+  target: Element,
+  mapFn: (Event) => Action
+): Stream<Event> {
   // we need to bind this to the element _immediately_ or else this
   // won't be here for morphdoms onBeforeElUpdated hook
   let sink
@@ -363,7 +371,9 @@ function onBeforeElUpdated(fromEl: Element, toEl: Element): boolean {
   return true
 }
 
-function isAction<Action>(sut: TimedAction<Action> | ApplicationEvent<Action>): sut is TimedAction<Action> {
+function isAction<Action>(
+  sut: TimedAction<Action> | ApplicationEvent<Action>
+): sut is TimedAction<Action> {
   const applicationEvent = sut as ApplicationEvent<Action>
   return !applicationEvent.eventStream
 }

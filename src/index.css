@@ -1,9 +1,0 @@
-:root {
-  --font-color: rgba(0, 0, 0, 0.7);
-}
-
-body {
-  font-family: avenir;
-  color: var(--font-color);
-  padding: 16px;
-}

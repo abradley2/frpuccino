@@ -2,8 +2,13 @@
   "name": "@abradley2/frpuccino",
   "version": "1.0.0-alpha.1",
   "description": "A lightweight reactive UI library built on @most/core",
-  "main": "./dist/index.js",
+  "main": "frpuccino.js",
+  "umd:main": "frpuccino.umd.js",
+  "module": "frpuccino.m.js",
+  "source": "./src/index.ts",
+  "types": "frpuccino.d.ts",
   "scripts": {
+    "build": "microbundle",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "parcel serve ./src/index.html",
     "lint": "standardx --fix ./**/*.tsx && standardx --fix ./**/*.ts"
@@ -16,6 +21,7 @@
     "@typescript-eslint/parser": "^2.6.1",
     "babel-eslint": "^10.0.3",
     "eslint": "^6.6.0",
+    "microbundle": "^0.11.0",
     "parcel-bundler": "^1.12.4",
     "standardx": "^5.0.0",
     "typescript": "^3.7.2"

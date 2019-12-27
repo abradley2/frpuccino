@@ -27,10 +27,7 @@ export function record<Model, Action>(emitter: Emitter, scheduler: Scheduler) {
       scheduler
     )
 
-    const {
-      applicationSink,
-      applicationStream
-    } = createApplication({
+    const { applicationSink, applicationStream } = createApplication({
       view,
       update,
       init,
