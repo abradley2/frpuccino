@@ -55,4 +55,6 @@ declare module "@abradley2/frpuccino" {
     export function createElement<Action>(...args: any): StreamElement<Action>
 
     export function mapElement<a, b>(mapFn: (from: a) => b, toNode: StreamElement<a>): StreamElement<b>
+
+    export function mapTaskCreator<Action, B> (mapFn: (a: Action) => B, taskCreator: TaskCreator<Action>): TaskCreator<B> 
 }

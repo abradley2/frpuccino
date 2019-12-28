@@ -96,6 +96,13 @@ export type TaskCreator<Action> = (
   scheduler: Scheduler
 ) => ScheduledTask;
 
+export function mapTaskCreator<Action, B> (
+  fn: (a: Action) => B,
+  taskCreator: TaskCreator<Action>
+): TaskCreator<B> {
+  return taskGenerator(taskCreator).map(fn).createTask
+}
+
 export interface TaskGenerator<Action> {
   map: <B>(fn: (a: Action) => B) => TaskGenerator<B>
   createTask: (sink: Sink<{ action: Action }>, scheduler: Scheduler) => ScheduledTask
