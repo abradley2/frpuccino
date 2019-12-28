@@ -96,6 +96,37 @@ export type TaskCreator<Action> = (
   scheduler: Scheduler
 ) => ScheduledTask;
 
+export interface TaskGenerator<Action> {
+  map: <B>(fn: (a: Action) => B) => TaskGenerator<B>
+  createTask: (sink: Sink<{ action: Action }>, scheduler: Scheduler) => ScheduledTask
+}
+
+export function taskGenerator<Action> (
+  createTask: (sink: Sink<{ action: Action }>, scheduler: Scheduler) => ScheduledTask
+): TaskGenerator<Action> {
+  return {
+    createTask,
+    map: function <B> (fn: (a: Action) => B): TaskGenerator<B> {
+      const nextCreateTask = (sink: Sink<{ action: B }>, scheduler: Scheduler): ScheduledTask => {
+        const nextSink: Sink<{ action: Action }> = {
+          event: (time: number, value: { action: Action }) => {
+            sink.event(time, { action: fn(value.action) })
+          },
+          end: (t) => {
+            sink.end(t)
+          },
+          error: (t, err) => {
+            sink.error(t, err)
+          }
+        }
+
+        return createTask(nextSink, scheduler)
+      }
+      return taskGenerator(nextCreateTask)
+    }
+  }
+}
+
 export type UpdateResult<Model, Action> =
   | Model
   | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
