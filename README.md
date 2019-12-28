@@ -29,3 +29,11 @@ createApplication({
   init: 0
 }).run(0)
 ```
+
+## Installation
+
+[@most/core](https://github.com/mostjs/core) and a few other associated libraries
+are peer dependencies.
+
+
+`npm install --save @most/core @most/scheduler @most/types @abradley2/frpuccino`
