@@ -2,34 +2,38 @@
   "name": "@abradley2/frpuccino",
   "version": "1.0.0-alpha.1",
   "description": "A lightweight reactive UI library built on @most/core",
-  "main": "frpuccino.js",
-  "umd:main": "frpuccino.umd.js",
-  "module": "frpuccino.m.js",
-  "source": "./src/index.ts",
-  "types": "frpuccino.d.ts",
+  "main": "frpuccino.umd.js",
   "scripts": {
-    "build": "microbundle",
+    "build": "browserify ./src/index.ts -p tsify -p tinyify -t [ bubleify ] -s frpuccino -u @most/core -u @most/scheduler -u @most/types -d | exorcist frpuccino.umd.js.map > frpuccino.umd.js",
+    "sourcemaps": "exorcist frpuccino.umd.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "parcel serve ./src/index.html",
-    "lint": "standardx --fix ./**/*.tsx && standardx --fix ./**/*.ts"
+    "lint": "eslint --fix ./src/**/*.ts"
   },
   "author": "Tony Bradley",
   "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^13.1.1",
-    "@typescript-eslint/eslint-plugin": "^2.6.1",
-    "@typescript-eslint/parser": "^2.6.1",
-    "babel-eslint": "^10.0.3",
-    "eslint": "^6.6.0",
-    "microbundle": "^0.11.0",
-    "parcel-bundler": "^1.12.4",
-    "standardx": "^5.0.0",
-    "typescript": "^3.7.2"
+  "peerDependencies": {
+    "@most/core": "1.x",
+    "@most/scheduler": "1.x",
+    "@most/types": "1.x"
   },
-  "dependencies": {
+  "devDependencies": {
     "@most/core": "^1.5.0",
     "@most/scheduler": "^1.2.3",
     "@most/types": "^1.0.2",
+    "@types/node": "^13.1.1",
+    "@typescript-eslint/eslint-plugin": "^2.6.1",
+    "@typescript-eslint/parser": "^2.13.0",
+    "browserify": "^16.5.0",
+    "buble": "^0.19.8",
+    "bubleify": "^1.2.1",
+    "eslint": "^6.6.0",
+    "exorcist": "^1.0.1",
+    "standardx": "^5.0.0",
+    "tinyify": "^2.5.2",
+    "tsify": "^4.0.1",
+    "typescript": "^3.7.4"
+  },
+  "dependencies": {
     "mitt": "^1.2.0",
     "morphdom": "^2.5.10"
   },
@@ -40,7 +44,7 @@
     "extends": [
       "standard"
     ],
-    "parser": "babel-eslint",
+    "parser": "@typescript-eslint/parser",
     "rules": {
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "off"

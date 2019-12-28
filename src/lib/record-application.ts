@@ -8,7 +8,7 @@ import { Scheduler } from '@most/types'
 import { schedulerRelativeTo, delay, asap } from '@most/scheduler'
 import { propagateEventTask, now, at, merge, mergeArray } from '@most/core'
 
-export function record<Model, Action>(emitter: Emitter, scheduler: Scheduler) {
+export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
   let startTime
   const actions = []
 
@@ -19,7 +19,7 @@ export function record<Model, Action>(emitter: Emitter, scheduler: Scheduler) {
 
   emitter.on(ACTION, handleAction)
 
-  return function playback({ mount, update, view, init }) {
+  return function playback ({ mount, update, view, init }) {
     emitter.off(ACTION, handleAction)
 
     const replayScheduler = schedulerRelativeTo(

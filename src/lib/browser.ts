@@ -37,7 +37,7 @@ export interface StreamElement<Action> extends Element {
   eventStream?: Stream<Action>;
 }
 
-function cloneEventStream(el: Element, source: Element): Stream<any> {
+function cloneEventStream (el: Element, source: Element): Stream<any> {
   const eventStreams: Stream<any>[] = []
   Object.keys(eventList).forEach((eventName) => {
     if (source[eventName] && source[eventName].mapFn) {
@@ -66,16 +66,19 @@ function cloneEventStream(el: Element, source: Element): Stream<any> {
   return eventStream
 }
 
-export function cloneNode<a>(): StreamElement<any> {
+export function cloneNode<a> (deep?: boolean): StreamElement<any> {
+  if (deep === false) {
+    throw new Error('StreamElement cannot be shallow cloned')
+  }
   const toNode: StreamElement<a> = this
-  const fromNode = document.createElement('div')
+  const fromNode: StreamElement<any> = document.createElement('div')
 
   updateDOM(fromNode, Element.prototype.cloneNode.call(toNode, true))
 
-  return (fromNode as StreamElement<any>)
+  return fromNode
 }
 
-export function mapElement<a, b>(mapFn: (from: a) => b, toNode: StreamElement<a>): StreamElement<b> {
+export function mapElement<a, b> (mapFn: (from: a) => b, toNode: StreamElement<a>): StreamElement<b> {
   const next: StreamElement<a | b> = cloneNode.call(toNode)
 
   next.eventStream = map(mapFn, cloneEventStream(next, toNode))
@@ -94,10 +97,10 @@ export type TaskCreator<Action> = (
 ) => ScheduledTask;
 
 export type UpdateResult<Model, Action> =
-  | Model 
+  | Model
   | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
 
-export interface ApplicationConfig<Action, Model> {
+export interface ApplicationConfig<Model, Action> {
   mount: Element;
   init: Model;
   update: (
@@ -120,15 +123,17 @@ export interface ApplicationEvent<Action> {
   eventStream: Stream<TimedAction<Action>>;
 }
 
-export function createApplication<Model, Action>(
-  applicationConfig: ApplicationConfig<Action, Model>
-): {
+export interface Application<Model, Action> {
   applicationStream: ApplicationStream<Action>;
   applicationSink: ApplicationSink<Action>;
   scheduler: Scheduler;
   run: (action: Action) => Disposable;
   eventSource: mitt.Emitter;
-} {
+}
+
+export function createApplication<Model, Action> (
+  applicationConfig: ApplicationConfig<Model, Action>
+): Application<Model, Action> {
   const { mount, init, update, view, runTasks } = applicationConfig
 
   const scheduler = applicationConfig.scheduler || newDefaultScheduler()
@@ -189,10 +194,10 @@ export function createApplication<Model, Action>(
         : null
 
       if (action) {
-        const applicationEvent: ApplicationEvent<Action> = { 
+        const applicationEvent: ApplicationEvent<Action> = {
           eventStream: now(action)
         }
-        return this.event.call(this, time, applicationEvent)
+        return this.event(time, applicationEvent)
       }
 
       const event = event_ as ApplicationEvent<Action>
@@ -252,8 +257,8 @@ export function createApplication<Model, Action>(
   }
 }
 
-function fromDOMEvent<Action>(
-  event, 
+function fromDOMEvent<Action> (
+  event,
   target: Element,
   mapFn: (Event) => Action
 ): Stream<Event> {
@@ -283,7 +288,7 @@ function fromDOMEvent<Action>(
   }
 }
 
-export function createElement<Action>(
+export function createElement<Action> (
   tag: string,
   attributes: StreamAttributes<Action>,
   ...children
@@ -318,7 +323,7 @@ export function createElement<Action>(
     })
   }
 
-  children.forEach(function appendChild(child) {
+  children.forEach(function appendChild (child) {
     if (typeof child === 'number') {
       const textNode = document.createTextNode(child.toString())
       el.appendChild(textNode)
@@ -350,7 +355,7 @@ export function createElement<Action>(
   return el
 }
 
-export function render(target, elementTree) {
+export function render (target, elementTree) {
   if (target.children.length === 0) {
     target.appendChild(elementTree)
   }
@@ -359,7 +364,7 @@ export function render(target, elementTree) {
 }
 
 // morphdom does not copy over event handlers so they need to be re-bound
-function onBeforeElUpdated(fromEl: Element, toEl: Element): boolean {
+function onBeforeElUpdated (fromEl: Element, toEl: Element): boolean {
   Object.keys(eventList).forEach(eventHandler => {
     if (toEl[eventHandler]) {
       fromEl[eventHandler] = toEl[eventHandler]
@@ -370,7 +375,7 @@ function onBeforeElUpdated(fromEl: Element, toEl: Element): boolean {
   return true
 }
 
-function isAction<Action>(
+function isAction<Action> (
   sut: TimedAction<Action> | ApplicationEvent<Action>
 ): sut is TimedAction<Action> {
   const applicationEvent = sut as ApplicationEvent<Action>
