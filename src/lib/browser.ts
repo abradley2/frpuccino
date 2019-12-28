@@ -89,7 +89,7 @@ export interface TimedAction<Action> {
 }
 
 export type TaskCreator<Action> = (
-  sink: Sink<{ eventStream: Stream<TimedAction<Action>> }>,
+  sink: ApplicationSink<Action>,
   scheduler: Scheduler
 ) => ScheduledTask;
 
@@ -157,8 +157,7 @@ export function createApplication<Model, Action>(
 
       const updateResult = update(model, timedAction.action, scheduler)
       if (
-        Array.isArray(updateResult) &&
-        typeof updateResult[1] === 'function'
+        Array.isArray(updateResult)
       ) {
         [nextModel, task] = updateResult
       } else {

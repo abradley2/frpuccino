@@ -12,9 +12,7 @@ export interface TimedAction<Action> {
     time?: number;
     action?: Action;
 }
-export declare type TaskCreator<Action> = (sink: Sink<{
-    eventStream: Stream<TimedAction<Action>>;
-}>, scheduler: Scheduler) => ScheduledTask;
+export declare type TaskCreator<Action> = (sink: ApplicationSink<Action>, scheduler: Scheduler) => ScheduledTask;
 export declare type UpdateResult<Model, Action> = Model | [Model, TaskCreator<Action> | TaskCreator<Action>[]];
 export interface ApplicationConfig<Action, Model> {
     mount: Element;
