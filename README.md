@@ -37,15 +37,3 @@ are peer dependencies.
 
 
 `npm install --save @most/core @most/scheduler @most/types @abradley2/frpuccino`
-
-# Features
-
-1. Record and Replay
-2. 
-
-# Basic Concepts
-
-1. Model -> Update -> View -> Action
-2. Utilizing Tasks
-3. Scaling Large Applications: Composition vs Components
-
