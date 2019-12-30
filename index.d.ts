@@ -1,6 +1,6 @@
 import { Stream, Sink, ScheduledTask, Scheduler, Disposable } from '@most/types'
 
-declare module "@abradley2/frpuccino" {
+declare module '@abradley2/frpuccino' {
     export interface StreamElement<Action> extends Element {
         eventStream?: Stream<Action>;
     }
@@ -30,6 +30,7 @@ declare module "@abradley2/frpuccino" {
         view: (model: Model) => StreamElement<Action>;
         scheduler?: Scheduler;
         runTasks?: boolean;
+        mapUrlChange?: (locaiton: Location) => Action;
     }
 
     export type ApplicationStream<Action> = Stream<ApplicationEvent<Action>>;
@@ -57,7 +58,7 @@ declare module "@abradley2/frpuccino" {
 
     export function mapElement<a, b>(mapFn: (from: a) => b, toNode: StreamElement<a>): StreamElement<b>
 
-    export function mapTaskCreator<Action, B> (mapFn: (a: Action) => B, taskCreator: TaskCreator<Action>): TaskCreator<B> 
+    export function mapTaskCreator<Action, B> (mapFn: (a: Action) => B, taskCreator: TaskCreator<Action>): TaskCreator<B>
 
     export function mapUpdateResult<Model, ModelB, Action, ActionB>(mapModel: (m: Model) => ModelB, mapTask: (a: Action) => ActionB, updateResult: UpdateResult<Model, Action>): [ModelB, TaskCreator<ActionB>[]]
 }

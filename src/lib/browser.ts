@@ -1,3 +1,4 @@
+import registerUrlChangeEvent from '@abradley2/url-change-event'
 import {
   startWith,
   loop,
@@ -178,6 +179,7 @@ export interface ApplicationConfig<Model, Action> {
     scheduler: Scheduler
   ) => UpdateResult<Model, Action>;
   view: (model: Model) => StreamElement<Action>;
+  mapUrlChange?: (Location) => Action;
   scheduler?: Scheduler;
   runTasks?: boolean;
 }
@@ -204,14 +206,30 @@ export interface Application<Model, Action> {
   });
 }
 
+let registeredUrlChangeEvent
 export function createApplication<Model, Action> (
   applicationConfig: ApplicationConfig<Model, Action>
 ): Application<Model, Action> {
-  const { mount, init, update, view, runTasks } = applicationConfig
+  const { mount, init, update, view, runTasks, mapUrlChange } = applicationConfig
 
   const scheduler = applicationConfig.scheduler || newDefaultScheduler()
 
   const eventSource = mitt()
+
+  const watchUrl = () => {
+    eventSource.emit(ACTION, {
+      action: mapUrlChange(window.location)
+    })
+  }
+
+  if (mapUrlChange) {
+    window.addEventListener('urlchange', watchUrl)
+    if (!registeredUrlChangeEvent) {
+      registerUrlChangeEvent()
+      registeredUrlChangeEvent = true
+    }
+  }
+
   const eventStream: Stream<TimedAction<Action>> = {
     run: (sink, scheduler) => {
       const handleMsg = action => sink.event(scheduler.currentTime(), action)
@@ -219,13 +237,14 @@ export function createApplication<Model, Action> (
       return {
         dispose: () => {
           eventSource.off(ACTION, handleMsg)
+          applicationConfig.mapUrlChange && eventSource.off(ACTION, watchUrl)
         }
       }
     }
   }
 
-  const applicationStream: Stream<{
-    view: Element;
+  let applicationStream: Stream<{
+    view?: Element;
     task?: TaskCreator<Action> | TaskCreator<Action>[];
     eventStream: Stream<TimedAction<Action>>;
   }> = loop(
@@ -259,6 +278,13 @@ export function createApplication<Model, Action> (
     init,
     eventStream
   )
+
+  if (mapUrlChange) {
+    applicationStream = startWith(
+      { eventStream: now({ action: mapUrlChange(window.location) }) },
+      applicationStream
+    )
+  }
 
   const applicationSink: Sink<Action | ApplicationEvent<Action>> = {
     event: function (time, event_) {
@@ -314,14 +340,14 @@ export function createApplication<Model, Action> (
       throw err
     }
   }
-  let disposable
+
   return {
     applicationStream,
     applicationSink,
     scheduler,
     eventSource,
     run: (action: Action) => {
-      disposable = applicationStream.run(applicationSink, scheduler)
+      const disposable = applicationStream.run(applicationSink, scheduler)
 
       eventSource.emit(ACTION, { time: scheduler.currentTime(), action })
 
@@ -330,10 +356,7 @@ export function createApplication<Model, Action> (
     record: () => {
       const cloneApplication = record(eventSource, scheduler)
 
-      return (newApplication) => {
-        const { application, run } = cloneApplication(newApplication)
-        return { application, run }
-      }
+      return (newApplication) => cloneApplication(newApplication)
     }
   }
 }
