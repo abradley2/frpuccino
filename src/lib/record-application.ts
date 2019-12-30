@@ -2,7 +2,8 @@ import {
   createApplication,
   Emitter,
   ACTION,
-  TimedAction
+  TimedAction,
+  ApplicationConfig
 } from '../lib/browser'
 import { Scheduler } from '@most/types'
 import { schedulerRelativeTo, delay, asap } from '@most/scheduler'
@@ -19,7 +20,9 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
 
   emitter.on(ACTION, handleAction)
 
-  return function playback ({ mount, update, view, init }) {
+  return function playback (config: ApplicationConfig<Model, Action>) {
+    const { mount, update, view, init, mapUrlChange } = config
+
     emitter.off(ACTION, handleAction)
 
     const replayScheduler = schedulerRelativeTo(
@@ -32,6 +35,7 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
       update,
       init,
       mount,
+      mapUrlChange,
       scheduler: replayScheduler,
       runTasks: false
     })
