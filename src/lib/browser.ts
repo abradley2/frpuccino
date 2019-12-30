@@ -198,7 +198,10 @@ export interface Application<Model, Action> {
   scheduler: Scheduler;
   run: (action: Action) => Disposable;
   eventSource: mitt.Emitter;
-  record: () => (<a, b>(app: ApplicationConfig<a, b>) => Application<a, b>);
+  record: () => (<a, b>(app: ApplicationConfig<a, b>) => {
+    application: Application<a, b>;
+    run: () => Disposable;
+  });
 }
 
 export function createApplication<Model, Action> (
@@ -325,11 +328,11 @@ export function createApplication<Model, Action> (
       return disposable
     },
     record: () => {
-      const playback = record(eventSource, scheduler)
+      const cloneApplication = record(eventSource, scheduler)
 
       return (newApplication) => {
-        disposable.dispose()
-        return playback(newApplication)
+        const { application, run } = cloneApplication(newApplication)
+        return { application, run }
       }
     }
   }

@@ -46,7 +46,9 @@ can recognize when that need arises.
 
 ## Core Concepts
 
-You do not actually need to be familiar with FRP to make use of
+You do not actually need to be 
+[familiar with FRP](https://www.youtube.com/watch?v=Agu6jipKfYw)
+to make use of
 FRPuccino. Reactive Programming is more the underlying engine of the API than
 the API itself. It will be very helpful, however, if you are familiar with the
 concepts of
@@ -137,71 +139,33 @@ What if we want to listen to an event that is scoped outside of our view
 (such as `window.onscroll`)? We can use 
 [Tasks](https://mostcore.readthedocs.io/en/latest/api.html#tasks) for this.
 
+Tasks are helper functions that allow us to propagate events to `Sinks`
+
 When we call `createApplication` an
 internal [Sink](https://mostcore.readthedocs.io/en/latest/api.html#sink)
 is created which does a couple things. It subscribes to the `Stream` of
-events returned by our view, and cycles them back up to the `update` function
-so we can return a new view which repeats the process.
+events returned by our `view` and `update` functions, 
+and the resulting DOM nodes created by composing `update` with `view`.
+The definition is similar to `<Sink<{eventStream: Stream<Action>, view: Element}>>`
 
-If an event does not originate from our view then we need to initiate our
-own `Stream` and run it against that `Sink` ourselves.
-
-Up until now our update function has simply processed the next value from our
-`eventStream` (henceforth called `Action`) and returned a new state (henceforth
-called `Model`) as a result of that `Action`. But update may optionally return
-a array of two values- the first being our `Model` and the second being a
-`TaskCreator<Action>`
-
-A `TaskCreator<Action>` has the following definition
-
+A "Task Creator" that creates a 
+[Scheduled Task](https://mostcore.readthedocs.io/en/latest/api.html#scheduledtask)
+to propagate events to this `Sink` will
+look something like this:
 ```
-export type TaskCreator<Action> = (
-  sink: Sink<{action: Action}>,
-  scheduler: Scheduler
-) => ScheduledTask
-```
-
-It is a callback that accepts our application's underlying `Sink` which we can then
-define and run our own `Stream` against.
-
-Here's an illustrative example building on our current application which
-
-```
-import { periodic, map } from '@most/core'
+import { TaskCreator } from '@abradley2/frpuccino'
+import { now, propagateEventTask } from '@most/core'
 import { asap } from '@most/scheduler'
 
-function update (currentState, value) {
-  // remember how we initially send a value of "0" when we call "run"!
-  if (value === 0) {
-    const taskCreator = (sink, scheduler) => {
-      const task = {
-        run: () => {
-          map(() => 1, periodic(1000)).run(sink, scheduler)
-        },
-        error: () => {},
-        dispose: () => {}
-      }
+export function propagateEvent <Action> (action: Action): TaskCreator<Action> {
+  const event = { eventStream: now({ action }) }
 
-      // we want this task to run immediately!
-      const scheduledTask = asap(task, scheduler)
+  return (sink, scheduler) => {
+    const task = propagateEventTask(event, sink)
 
-      return scheduledTask
-    }
-    return [ currentState, taskCreator ]
+    return asap(task, scheduler)
   }
-
-  // otherwise update normally as we did in previous examples!
-  return currentState + value
 }
 ```
-
-So a `TaskCreator<Action>` accepts a callback which recieves our application `Sink`
-(`Sink<{action: Action}>`)
-
-This callback creates a `Task` which is a simple object with `run`, `dispose`
-and `error` methods.
-
-The callback then returns a [Scheduled Task](https://mostcore.readthedocs.io/en/latest/api.html#scheduledtask) which uses the `Scheduler` to tell our application runtime
-when to execute it (mostly we want to use `asap` so our `Task` runs immediately)
 
 ## Type: `UpdateResult<Model, Event>`

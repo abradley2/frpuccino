@@ -42,8 +42,9 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
       return at(action.time, action)
     }))
 
-    merge(applicationStream, eventStream).run(applicationSink, replayScheduler)
-    console.log('RETURNING APPLICATION FROM PLAYBACK', application)
-    return application
+    const run = () => merge(applicationStream, eventStream)
+      .run(applicationSink, replayScheduler)
+
+    return { application, run }
   }
 }
