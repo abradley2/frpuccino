@@ -218,7 +218,8 @@ export function createApplication<Model, Action> (
 
   const watchUrl = () => {
     eventSource.emit(ACTION, {
-      action: mapUrlChange(window.location)
+      action: mapUrlChange(window.location),
+      time: scheduler.currentTime()
     })
   }
 

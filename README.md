@@ -149,7 +149,7 @@ and the resulting DOM nodes created by composing `update` with `view`.
 The definition is similar to 
 
 ```
-Sink<{eventStream: Stream<{action: Action}>, view: Element}>
+Sink<{eventStream: Stream<{action: Action}>, view?: Element}>
 ```
 
 A "Task Creator" that creates a 
