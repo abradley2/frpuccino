@@ -28,6 +28,7 @@ import {
 } from '@most/scheduler'
 import eventList from './event-list'
 import { StreamAttributes } from './attributes'
+import { record } from './record-application'
 
 export type Emitter = mitt.Emitter;
 
@@ -138,6 +139,36 @@ export type UpdateResult<Model, Action> =
   | Model
   | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
 
+export function mapUpdateResult<Model, ModelB, Action, ActionB> (
+  mapModel: (m: Model) => ModelB,
+  mapTask: (a: Action) => ActionB,
+  updateResult: UpdateResult<Model, Action>
+): [ModelB, TaskCreator<ActionB>[]] {
+  const [model, task] =
+    Array.isArray(updateResult)
+      ? updateResult
+      : [updateResult, null]
+
+  const tasks: TaskCreator<Action>[] = (Array.isArray(task)
+    ? task
+    : [task]
+  ).filter(v => !!v)
+
+  const mappedTasks: TaskCreator<ActionB>[] = tasks.map((t) =>
+    mapTaskCreator(
+      mapTask,
+      t
+    )
+  )
+
+  const mappedModel = mapModel(model)
+
+  return [
+    mappedModel,
+    mappedTasks
+  ]
+}
+
 export interface ApplicationConfig<Model, Action> {
   mount: Element;
   init: Model;
@@ -167,6 +198,7 @@ export interface Application<Model, Action> {
   scheduler: Scheduler;
   run: (action: Action) => Disposable;
   eventSource: mitt.Emitter;
+  record: () => (<a, b>(app: ApplicationConfig<a, b>) => Application<a, b>);
 }
 
 export function createApplication<Model, Action> (
@@ -279,18 +311,26 @@ export function createApplication<Model, Action> (
       throw err
     }
   }
-
+  let disposable
   return {
     applicationStream,
     applicationSink,
     scheduler,
     eventSource,
     run: (action: Action) => {
-      const disposable = applicationStream.run(applicationSink, scheduler)
+      disposable = applicationStream.run(applicationSink, scheduler)
 
       eventSource.emit(ACTION, { time: scheduler.currentTime(), action })
 
       return disposable
+    },
+    record: () => {
+      const playback = record(eventSource, scheduler)
+
+      return (newApplication) => {
+        disposable.dispose()
+        return playback(newApplication)
+      }
     }
   }
 }

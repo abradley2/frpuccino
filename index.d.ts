@@ -48,6 +48,7 @@ declare module "@abradley2/frpuccino" {
         scheduler: Scheduler;
         run: (action: Action) => Disposable;
         eventSource: mitt.Emitter;
+        record: () => (<a, b>(app: ApplicationConfig<a, b>) => Application<a, b>);
     }
 
     export function createApplication<Model, Action>(config: ApplicationConfig<Model, Action>): Application<Model, Action>
@@ -57,4 +58,6 @@ declare module "@abradley2/frpuccino" {
     export function mapElement<a, b>(mapFn: (from: a) => b, toNode: StreamElement<a>): StreamElement<b>
 
     export function mapTaskCreator<Action, B> (mapFn: (a: Action) => B, taskCreator: TaskCreator<Action>): TaskCreator<B> 
+
+    export function mapUpdateResult<Model, ModelB, Action, ActionB>(mapModel: (m: Model) => ModelB, mapTask: (a: Action) => ActionB, updateResult: UpdateResult<Model, Action>): [ModelB, TaskCreator<ActionB>[]]
 }

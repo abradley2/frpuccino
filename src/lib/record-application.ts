@@ -27,7 +27,7 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
       scheduler
     )
 
-    const { applicationSink, applicationStream } = createApplication({
+    const application = createApplication({
       view,
       update,
       init,
@@ -36,10 +36,14 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
       runTasks: false
     })
 
+    const { applicationSink, applicationStream } = application
+
     const eventStream = mergeArray(actions.map((action) => {
       return at(action.time, action)
     }))
 
     merge(applicationStream, eventStream).run(applicationSink, replayScheduler)
+    console.log('RETURNING APPLICATION FROM PLAYBACK', application)
+    return application
   }
 }
