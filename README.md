@@ -56,7 +56,7 @@ concepts of
 and
 [Sinks](https://mostcore.readthedocs.io/en/latest/api.html#sink).
 
-## API and Usage
+## API Usage and Tutorial
 
 Only two methods are needed to create basic applications:
 `createElement` and `createApplication`
@@ -146,7 +146,11 @@ internal [Sink](https://mostcore.readthedocs.io/en/latest/api.html#sink)
 is created which does a couple things. It subscribes to the `Stream` of
 events returned by our `view` and `update` functions, 
 and the resulting DOM nodes created by composing `update` with `view`.
-The definition is similar to `<Sink<{eventStream: Stream<Action>, view: Element}>>`
+The definition is similar to 
+
+```
+Sink<{eventStream: Stream<{action: Action}>, view: Element}>
+```
 
 A "Task Creator" that creates a 
 [Scheduled Task](https://mostcore.readthedocs.io/en/latest/api.html#scheduledtask)
@@ -168,4 +172,39 @@ export function propagateEvent <Action> (action: Action): TaskCreator<Action> {
 }
 ```
 
-## Type: `UpdateResult<Model, Event>`
+## Type: `UpdateResult<Model, Action>`
+
+The main `update` function is allowed to return more than just the next version
+of the `Model`. It may also return an array consiting of the model as the first
+item, and either `TaskCreator<Action>` or `TaskCreator<Action>[]` as the
+second item.
+
+We can change our original `update` function so when our application starts,
+we use our `propagateEvent` function to start us out with an
+
+```
+function update (currentState, value) {
+  // recall that we specified "0" as our initial action to dispatch when
+  // our application starts.
+  if (value === 0) {
+    return [currentState, propagateEvent(1)]
+  }
+
+  return currentState + value
+}
+```
+
+`UpdateResult<Model, Event>` is very flexible. We can not only give a single
+scheduled task to be executed as a result of update, but many.
+
+```
+if (value === 0) {
+  return [
+    currentState,
+    [
+      propagateEvent(1),
+      propagateEvent(1)
+    ]
+  ]
+}
+```
