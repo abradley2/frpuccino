@@ -56,5 +56,13 @@
     "plugins": [
       "@typescript-eslint/eslint-plugin"
     ]
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abradley2/stream-element.git"
+  },
+  "bugs": {
+    "url": "https://github.com/abradley2/stream-element/issues"
+  },
+  "homepage": "https://github.com/abradley2/stream-element#readme"
 }
