@@ -11,7 +11,7 @@ import { propagateEventTask, now, at, merge, mergeArray } from '@most/core'
 
 export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
   let startTime
-  const actions = []
+  const actions: TimedAction<Action>[] = []
 
   const handleAction = (timedAction: TimedAction<Action>) => {
     if (!startTime && timedAction.time) startTime = timedAction.time - 500
@@ -42,7 +42,9 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
 
     const { applicationSink, applicationStream } = application
 
-    const eventStream = mergeArray(actions)
+    const eventStream = mergeArray(actions.map((action: TimedAction<Action>) => {
+      return now({ action: action.action })
+    }))
 
     const run = () => merge(applicationStream, eventStream)
       .run(applicationSink, replayScheduler)
