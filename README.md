@@ -87,7 +87,7 @@ const sink = {
   error: () => {}
 }
 
-el.eventStream.run(sink}, newDefaultScheduler())
+el.eventStream.run(sink, newDefaultScheduler())
 ```
 
 Our `el` above is a simple `Element` that we can append to our document.
@@ -180,7 +180,8 @@ item, and either `TaskCreator<Action>` or `TaskCreator<Action>[]` as the
 second item.
 
 We can change our original `update` function so when our application starts,
-we use our `propagateEvent` function to start us out with an
+we use our `propagateEvent` function to start us out with counter incrementing 
+once by a value of "1"
 
 ```
 function update (currentState, value) {
@@ -194,7 +195,7 @@ function update (currentState, value) {
 }
 ```
 
-`UpdateResult<Model, Event>` is very flexible. We can not only give a single
+`UpdateResult<Model, Action>` is very flexible. We can not only give a single
 scheduled task to be executed as a result of update, but many.
 
 ```
@@ -208,3 +209,6 @@ if (value === 0) {
   ]
 }
 ```
+
+## Composition
+

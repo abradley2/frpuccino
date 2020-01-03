@@ -42,9 +42,7 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
 
     const { applicationSink, applicationStream } = application
 
-    const eventStream = mergeArray(actions.map((action) => {
-      return at(action.time, action)
-    }))
+    const eventStream = mergeArray(actions)
 
     const run = () => merge(applicationStream, eventStream)
       .run(applicationSink, replayScheduler)

@@ -110,16 +110,26 @@ export interface TaskGenerator<Action> {
   createTask: (sink: Sink<{ action: Action }>, scheduler: Scheduler) => ScheduledTask
 }
 
+// TODO: I plan on cleaning up this mess... It was VERY tricky getting this to work
 export function taskGenerator<Action> (
-  createTask: (sink: Sink<{ action: Action }>, scheduler: Scheduler) => ScheduledTask
+  createTask: (sink: Sink<{ action?: Action, eventStream?: Stream<{action: Action}> }>, scheduler: Scheduler) => ScheduledTask
 ): TaskGenerator<Action> {
   return {
     createTask,
     map: function <B> (fn: (a: Action) => B): TaskGenerator<B> {
-      const nextCreateTask = (sink: Sink<{ action: B }>, scheduler: Scheduler): ScheduledTask => {
-        const nextSink: Sink<{ action: Action }> = {
-          event: (time: number, value: { action: Action }) => {
-            sink.event(time, { action: fn(value.action) })
+      const nextCreateTask = (sink: Sink<{ action?: B, eventStream?: Stream<{action: B}> }>, scheduler: Scheduler): ScheduledTask => {
+        const nextSink: Sink<{ action?: Action, eventStream?: Stream<{action: Action}> }> = {
+          event: (time: number, value: { action?: Action, eventStream?: Stream<{action: Action}> }) => {
+            if (value.action) {
+              sink.event(time, { action: fn(value.action) })
+            }
+            if (value.eventStream) {
+              sink.event(time, {
+                eventStream: map((payload) => {
+                  return { action: fn(payload.action) }
+                }, value.eventStream)
+              })
+            }
           },
           end: (t) => {
             sink.end(t)
