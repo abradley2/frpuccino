@@ -210,5 +210,74 @@ if (value === 0) {
 }
 ```
 
-## Composition
+## Scaling Applications
 
+The next few sections will focus on techniques that come into play as you
+need to scale into even large applications. First let's establish a rudimentary
+common pattern of separating `Model`, `Action`, `init`, `update` and `view`
+that we can refer back to in each section. 
+
+Here's a very small "Todo List" example to illustrate:
+```
+/** @jsx createElement */
+import { createElement, createApplication } from '@abradle2/frpuccion'
+
+const INIT = 'INIT'
+const TITLE_CHANGED = 'TODO_CLICKED'
+const ADD_TODO = 'ADD_TODO'
+
+type Action =
+  | { type: typeof INIT }
+  | { type: typeof TITLE_CHANGED, payload: string }
+  | { type: typeof ADD_TODO }
+
+interface Model {
+  title: string;
+  todos: string[];
+}
+
+function init (): Model {
+  return {
+    title: "",
+    todos: []
+  }
+}
+
+function update (model: Model, action: Action) {
+  switch (action.type) {
+    case TITLE_CHANGED:
+      return {...model, title: action.payload }
+    case ADD_TODO:
+      return {
+        ...model,
+        title: '',
+        todos: model.todos.concat([model.title])
+      }
+    default:
+      return model
+  }
+}
+
+function view (model) {
+
+}
+
+const mount = document.createElement('div')
+document.body.appendChild(mount)
+
+createApplication({
+  mount,
+  init: init(),
+  update,
+  view
+})
+  .run({ type: INIT })
+
+```
+## Method: `mapElement`
+
+## Method: `mapTaskCreator`
+
+## Method: `mapUpdateResult`
+
+## Routing

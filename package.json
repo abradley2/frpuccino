@@ -1,12 +1,11 @@
 {
   "name": "@abradley2/frpuccino",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "A lightweight reactive UI library built on @most/core",
   "main": "frpuccino.umd.js",
   "scripts": {
     "build": "browserify ./src/index.ts -p tsify -p tinyify -t [ bubleify ] -s frpuccino -u @most/core -u @most/scheduler -u @most/types -d | exorcist frpuccino.umd.js.map > frpuccino.umd.js",
-    "sourcemaps": "exorcist frpuccino.umd.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "parcel serve ./test/index.html",
     "lint": "eslint --fix ./src/**/*.ts"
   },
   "author": "Tony Bradley",
@@ -21,6 +20,7 @@
     "@most/scheduler": "^1.2.3",
     "@most/types": "^1.0.2",
     "@types/node": "^13.1.1",
+    "@types/tape": "^4.2.33",
     "@typescript-eslint/eslint-plugin": "^2.6.1",
     "@typescript-eslint/parser": "^2.13.0",
     "browserify": "^16.5.0",
@@ -28,7 +28,10 @@
     "bubleify": "^1.2.1",
     "eslint": "^6.6.0",
     "exorcist": "^1.0.1",
+    "highland": "^2.13.5",
+    "parcel": "^1.12.4",
     "standardx": "^5.0.0",
+    "tape": "^4.12.1",
     "tinyify": "^2.5.2",
     "tsify": "^4.0.1",
     "typescript": "^3.7.4"

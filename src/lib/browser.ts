@@ -39,53 +39,13 @@ export interface StreamElement<Action> extends Element {
   eventStream?: Stream<Action>;
 }
 
-function cloneEventStream (el: Element, source: Element): Stream<any> {
-  const eventStreams: Stream<any>[] = []
-  Object.keys(eventList).forEach((eventName) => {
-    if (source[eventName] && source[eventName].mapFn) {
-      const mapEvent = source[eventName].mapFn
+export function mapElement<a, b> (mapFn: (from: a) => b, toNode: StreamElement<a> | StreamElement<b>): StreamElement<b> {
+  const streamA = toNode.eventStream as Stream<a>
+  const streamB = map(mapFn, streamA)
 
-      eventStreams.push(
-        map(
-          mapEvent,
-          fromDOMEvent(eventName, el, mapEvent)
-        )
-      )
-    }
-  })
+  toNode.eventStream = streamB
 
-  let eventStream = mergeArray(eventStreams)
-
-  for (let i = 0; i < el.children.length; i++) {
-    const child = el.children[i]
-    const sourceChild = source.children[i]
-    eventStream = merge(
-      eventStream,
-      cloneEventStream(child, sourceChild)
-    )
-  }
-
-  return eventStream
-}
-
-export function cloneNode<a> (deep?: boolean): StreamElement<any> {
-  if (deep === false) {
-    throw new Error('StreamElement cannot be shallow cloned')
-  }
-  const toNode: StreamElement<a> = this
-  const fromNode: StreamElement<any> = document.createElement('div')
-
-  updateDOM(fromNode, Element.prototype.cloneNode.call(toNode, true))
-
-  return fromNode
-}
-
-export function mapElement<a, b> (mapFn: (from: a) => b, toNode: StreamElement<a>): StreamElement<b> {
-  const next: StreamElement<a | b> = cloneNode.call(toNode)
-
-  next.eventStream = map(mapFn, cloneEventStream(next, toNode))
-
-  return next
+  return toNode as StreamElement<b>
 }
 
 export interface TimedAction<Action> {
@@ -463,7 +423,6 @@ export function createElement<Action> (
     el.appendChild(child)
 
     el.eventStream = merge(el.eventStream, child.eventStream)
-    el.cloneNode = cloneNode
     child.eventStream = null
   })
 
