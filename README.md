@@ -9,7 +9,7 @@ FRPuccino is a small UI library built on the foundation of [Most.js](https://git
 It's inspired heavily by [Elm](https://elm-lang.org/) and [Cycle.js](https://cycle.js.org/)
 
 Here's a short "counter" example:
-```
+```tsx
 import { createElement, createApplication } from '@abradley2/frpuccino'
 
 function update (model, addValue) {
@@ -246,6 +246,7 @@ function application () {
       Count by input:
       {mapElement(
         (payload) => {
+          const result = parseInt(result, 10)
           if (!Number.isNaN(result)) return result
           return 0
         },
