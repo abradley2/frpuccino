@@ -69,7 +69,7 @@ This createElement is unique. It returns an un-mounted DOM element, with
 a `Stream` consisting of all bound event handlers.
 
 Here's a short illustrative example
-```
+```tsx
 /** @jsx createElement */
 import { createElement } from '@abradley2/frpuccino'
 import { newDefaultScheduler } from '@most/scheduler'
@@ -110,7 +110,7 @@ user interfaces. `createApplication` is a way of "looping" the
 This cycle of `update` -> `event` -> `createElement` -> `update` forms the
 basic flow of all applications.
 
-```
+```tsx
 createApplication({
   // this is our initial update value!
   init: 0,
@@ -148,7 +148,7 @@ events returned by our `view` and `update` functions,
 and the resulting DOM nodes created by composing `update` with `view`.
 The definition is similar to 
 
-```
+```tsx
 Sink<{eventStream: Stream<{action: Action}>, view?: Element}>
 ```
 
@@ -156,7 +156,7 @@ A "Task Creator" that creates a
 [Scheduled Task](https://mostcore.readthedocs.io/en/latest/api.html#scheduledtask)
 to propagate events to this `Sink` will
 look something like this:
-```
+```tsx
 import { TaskCreator } from '@abradley2/frpuccino'
 import { now, propagateEventTask } from '@most/core'
 import { asap } from '@most/scheduler'
@@ -183,7 +183,7 @@ We can change our original `update` function so when our application starts,
 we use our `propagateEvent` function to start us out with counter incrementing 
 once by a value of "1"
 
-```
+```tsx
 function update (currentState, value) {
   // recall that we specified "0" as our initial action to dispatch when
   // our application starts.
@@ -198,7 +198,7 @@ function update (currentState, value) {
 `UpdateResult<Model, Action>` is very flexible. We can not only give a single
 scheduled task to be executed as a result of update, but many.
 
-```
+```tsx
 if (value === 0) {
   return [
     currentState,
@@ -210,74 +210,52 @@ if (value === 0) {
 }
 ```
 
-## Scaling Applications
-
-The next few sections will focus on techniques that come into play as you
-need to scale into even large applications. First let's establish a rudimentary
-common pattern of separating `Model`, `Action`, `init`, `update` and `view`
-that we can refer back to in each section. 
-
-Here's a very small "Todo List" example to illustrate:
-```
-/** @jsx createElement */
-import { createElement, createApplication } from '@abradle2/frpuccion'
-
-const INIT = 'INIT'
-const TITLE_CHANGED = 'TODO_CLICKED'
-const ADD_TODO = 'ADD_TODO'
-
-type Action =
-  | { type: typeof INIT }
-  | { type: typeof TITLE_CHANGED, payload: string }
-  | { type: typeof ADD_TODO }
-
-interface Model {
-  title: string;
-  todos: string[];
-}
-
-function init (): Model {
-  return {
-    title: "",
-    todos: []
-  }
-}
-
-function update (model: Model, action: Action) {
-  switch (action.type) {
-    case TITLE_CHANGED:
-      return {...model, title: action.payload }
-    case ADD_TODO:
-      return {
-        ...model,
-        title: '',
-        todos: model.todos.concat([model.title])
-      }
-    default:
-      return model
-  }
-}
-
-function view (model) {
-
-}
-
-const mount = document.createElement('div')
-document.body.appendChild(mount)
-
-createApplication({
-  mount,
-  init: init(),
-  update,
-  view
-})
-  .run({ type: INIT })
-
-```
 ## Method: `mapElement`
 
-## Method: `mapTaskCreator`
+Similar to how we can `map` a `Stream` from `Stream<A> -> Stream<B>`
+we can use `mapElement` to convert the `eventStream` of one element
+to another `Stream` type. This is useful to avoid cases where
+due to composing many different modular features we end up with
+types like `Stream<A | B | C | D | E>` that are difficult to reason
+about in our application's update function.
 
-## Method: `mapUpdateResult`
+Here's an illustrative example of avoiding an update function having to
+deal with an event of type `number | string` by normalizing
+all `eventStreams` to `Stream<numer>`
 
-## Routing
+```tsx
+function button () {
+  return <div>
+    <button onclick={1}>Click me</button>
+  </div>
+}
+
+function input () {
+  return <div>
+    <input onchange={(e) => e.target.value} />
+  </div>
+}
+
+function application () {
+  return <div>
+    <div>
+      Count by one:
+      {button()}
+    </div>
+    <div>
+      Count by input:
+      {mapElement(
+        (payload) => {
+          if (!Number.isNaN(result)) return result
+          return 0
+        },
+        input()
+      )}
+    </div>
+  </div>
+}
+```
+
+:warning: Due to performance reasons, `mapElement` actually mutates
+the `Element` passed to it. Always use a constructor function to pass
+the second argument to this function :warning:

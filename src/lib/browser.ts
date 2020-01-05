@@ -67,22 +67,19 @@ export function mapTaskCreator<Action, B> (
 
 export interface TaskGenerator<Action> {
   map: <B>(fn: (a: Action) => B) => TaskGenerator<B>
-  createTask: (sink: Sink<{ action: Action }>, scheduler: Scheduler) => ScheduledTask
+  createTask: (sink: ApplicationSink<Action>, scheduler: Scheduler) => ScheduledTask
 }
 
 // TODO: I plan on cleaning up this mess... It was VERY tricky getting this to work
 export function taskGenerator<Action> (
-  createTask: (sink: Sink<{ action?: Action, eventStream?: Stream<{action: Action}> }>, scheduler: Scheduler) => ScheduledTask
+  createTask: (sink: ApplicationSink<Action>, scheduler: Scheduler) => ScheduledTask
 ): TaskGenerator<Action> {
   return {
     createTask,
     map: function <B> (fn: (a: Action) => B): TaskGenerator<B> {
-      const nextCreateTask = (sink: Sink<{ action?: B, eventStream?: Stream<{action: B}> }>, scheduler: Scheduler): ScheduledTask => {
-        const nextSink: Sink<{ action?: Action, eventStream?: Stream<{action: Action}> }> = {
-          event: (time: number, value: { action?: Action, eventStream?: Stream<{action: Action}> }) => {
-            if (value.action) {
-              sink.event(time, { action: fn(value.action) })
-            }
+      const nextCreateTask = (sink: ApplicationSink<B>, scheduler: Scheduler): ScheduledTask => {
+        const nextSink: ApplicationSink<Action> = {
+          event: (time: number, value: ApplicationEvent<Action>) => {
             if (value.eventStream) {
               sink.event(time, {
                 eventStream: map((payload) => {
@@ -110,20 +107,36 @@ export type UpdateResult<Model, Action> =
   | Model
   | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
 
-function unlift (v) {
-  return v
-}
-
 export function getModel<Model, Action> (
   updateResult: UpdateResult<Model, Action>
 ): Model {
-  return mapUpdateResult(unlift, unlift, updateResult)[0]
+  return getUpdateResult(updateResult)[0]
 }
 
 export function getTasks<Model, Action> (
   updateResult: UpdateResult<Model, Action>
 ): TaskCreator<Action>[] {
-  return mapUpdateResult(unlift, unlift, updateResult)[1]
+  return getUpdateResult(updateResult)[1]
+}
+
+function unlift (v) {
+  return v
+}
+
+export function getUpdateResult<Model, Action> (
+  updateResult: UpdateResult<Model, Action>
+): [Model, TaskCreator<Action>[]] {
+  const [model, task] =
+  Array.isArray(updateResult)
+    ? updateResult
+    : [updateResult, null]
+
+  const tasks: TaskCreator<Action>[] = (Array.isArray(task)
+    ? task
+    : [task]
+  ).filter(v => !!v)
+
+  return [model, tasks]
 }
 
 export function mapUpdateResult<Model, ModelB, Action, ActionB> (
@@ -131,15 +144,7 @@ export function mapUpdateResult<Model, ModelB, Action, ActionB> (
   mapTask: (a: Action) => ActionB,
   updateResult: UpdateResult<Model, Action>
 ): [ModelB, TaskCreator<ActionB>[]] {
-  const [model, task] =
-    Array.isArray(updateResult)
-      ? updateResult
-      : [updateResult, null]
-
-  const tasks: TaskCreator<Action>[] = (Array.isArray(task)
-    ? task
-    : [task]
-  ).filter(v => !!v)
+  const [model, tasks] = getUpdateResult(updateResult)
 
   const mappedTasks: TaskCreator<ActionB>[] = tasks.map((t) =>
     mapTaskCreator(
@@ -171,7 +176,7 @@ export interface ApplicationConfig<Model, Action> {
 
 export type ApplicationStream<Action> = Stream<ApplicationEvent<Action>>;
 
-export type ApplicationSink<Action> = Sink<TimedAction<Action> | ApplicationEvent<Action>>;
+export type ApplicationSink<Action> = Sink<ApplicationEvent<Action>>;
 
 export interface ApplicationEvent<Action> {
   view?: Element;
@@ -269,20 +274,8 @@ export function createApplication<Model, Action> (
     )
   }
 
-  const applicationSink: Sink<Action | ApplicationEvent<Action>> = {
-    event: function (time, event_) {
-      const action = isAction(event_)
-        ? event_
-        : null
-
-      if (action) {
-        const applicationEvent: ApplicationEvent<Action> = {
-          eventStream: now(action)
-        }
-        return this.event(time, applicationEvent)
-      }
-
-      const event = event_ as ApplicationEvent<Action>
+  const applicationSink: Sink<ApplicationEvent<Action>> = {
+    event: function (time, event) {
       if (event.view) {
         updateDOM(mount, event.view, { onBeforeElUpdated })
       }
@@ -349,8 +342,10 @@ function fromDOMEvent<Action> (
   target: Element,
   mapFn: (Event) => Action
 ): Stream<Event> {
-  // we need to bind this to the element _immediately_ or else this
-  // won't be here for morphdoms onBeforeElUpdated hook
+  // we need to bind our event handler to the DOM node _immediately_ so
+  // morphdom will copy it over, but the sink and scheduler aren't available
+  // until the stream starts, so we need to do this clever little work around
+  // here
   let sink
   let scheduler
 

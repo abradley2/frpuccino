@@ -46,7 +46,7 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
       return now({ action: action.action })
     }))
 
-    application.run = () => merge(applicationStream, eventStream)
+    application.run = () => merge(applicationStream, now({ eventStream }))
       .run(applicationSink, replayScheduler)
 
     return application

@@ -34,7 +34,7 @@ declare module '@abradley2/frpuccino' {
 
     export type ApplicationStream<Action> = Stream<ApplicationEvent<Action>>;
 
-    export type ApplicationSink<Action> = Sink<TimedAction<Action> | ApplicationEvent<Action>>;
+    export type ApplicationSink<Action> = Sink<ApplicationEvent<Action>>;
 
     export interface ApplicationEvent<Action> {
         view?: Element;
@@ -68,4 +68,8 @@ declare module '@abradley2/frpuccino' {
     export function getTasks<Model, Action>(
         updateResult: UpdateResult<Model, Action>
     ): TaskCreator<Action>[]
+
+    export function getUpdateResult<Model, Action>(
+        updateResult: UpdateResult<Model, Action>
+    ): [Model, TaskCreator<Action>[]]
 }
