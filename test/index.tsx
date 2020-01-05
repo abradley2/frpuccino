@@ -140,3 +140,41 @@ test('mapTaskCreator works as expected', function (t) {
   })
     .run(1)
 })
+
+test('mapElement works when converting types', function (t) {
+  t.plan(2)
+  t.timeoutAfter(100)
+
+  function input () {
+    return <div>
+      <input value="1000" onchange={(e) => e.target.value} />
+    </div>
+  }
+
+  function view (model) {
+    return <div>
+      <div>
+        {mapElement(
+          (payload: string) => {
+            const result = parseInt(payload, 10)
+            if (!Number.isNaN(result)) return result
+            return 0
+          },
+          input()
+        )}
+      </div>
+      <h3>{model}</h3>
+    </div>
+  }
+
+  const el = view(0)
+
+  el.eventStream.run({
+    event: (_, e) => {
+      t.ok(typeof e === 'number', 'converted to number')
+      t.ok(!Number.isNaN(e), 'isnt NaN')
+    }
+  }, newDefaultScheduler())
+
+  el.querySelector('input').dispatchEvent(new Event('change'))
+})
