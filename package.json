@@ -1,11 +1,11 @@
 {
   "name": "@abradley2/frpuccino",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "A lightweight reactive UI library built on @most/core",
   "main": "frpuccino.umd.js",
   "scripts": {
     "build": "browserify ./src/index.ts -p tsify -p tinyify -t [ bubleify ] -s frpuccino -u @most/core -u @most/scheduler -u @most/types -d | exorcist frpuccino.umd.js.map > frpuccino.umd.js",
-    "test": "parcel serve ./test/index.html",
+    "test": "parcel serve ./test/index.html --open",
     "lint": "eslint --fix ./src/**/*.ts"
   },
   "author": "Tony Bradley",

@@ -110,6 +110,22 @@ export type UpdateResult<Model, Action> =
   | Model
   | [Model, TaskCreator<Action> | TaskCreator<Action>[]]
 
+function unlift (v) {
+  return v
+}
+
+export function getModel<Model, Action> (
+  updateResult: UpdateResult<Model, Action>
+): Model {
+  return mapUpdateResult(unlift, unlift, updateResult)[0]
+}
+
+export function getTasks<Model, Action> (
+  updateResult: UpdateResult<Model, Action>
+): TaskCreator<Action>[] {
+  return mapUpdateResult(unlift, unlift, updateResult)[1]
+}
+
 export function mapUpdateResult<Model, ModelB, Action, ActionB> (
   mapModel: (m: Model) => ModelB,
   mapTask: (a: Action) => ActionB,
@@ -145,8 +161,7 @@ export interface ApplicationConfig<Model, Action> {
   init: Model;
   update: (
     model: Model,
-    action: Action,
-    scheduler: Scheduler
+    action: Action
   ) => UpdateResult<Model, Action>;
   view: (model: Model) => StreamElement<Action>;
   mapUrlChange?: (Location) => Action;
@@ -170,10 +185,7 @@ export interface Application<Model, Action> {
   scheduler: Scheduler;
   run: (action: Action) => Disposable;
   eventSource: mitt.Emitter;
-  record: () => (<a, b>(app: ApplicationConfig<a, b>) => {
-    application: Application<a, b>;
-    run: () => Disposable;
-  });
+  record: () => (<a, b>(app: ApplicationConfig<a, b>) => Application<a, b>);
 }
 
 let registeredUrlChangeEvent
@@ -223,7 +235,7 @@ export function createApplication<Model, Action> (
       let task
       let nextModel
 
-      const updateResult = update(model, timedAction.action, scheduler)
+      const updateResult = update(model, timedAction.action)
       if (
         Array.isArray(updateResult)
       ) {

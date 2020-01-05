@@ -14,7 +14,7 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
   const actions: TimedAction<Action>[] = []
 
   const handleAction = (timedAction: TimedAction<Action>) => {
-    if (!startTime && timedAction.time) startTime = timedAction.time - 500
+    if (!startTime && timedAction.time) startTime = timedAction.time
     actions.push(timedAction)
   }
 
@@ -46,9 +46,9 @@ export function record<Model, Action> (emitter: Emitter, scheduler: Scheduler) {
       return now({ action: action.action })
     }))
 
-    const run = () => merge(applicationStream, eventStream)
+    application.run = () => merge(applicationStream, eventStream)
       .run(applicationSink, replayScheduler)
 
-    return { application, run }
+    return application
   }
 }

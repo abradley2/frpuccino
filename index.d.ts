@@ -24,8 +24,7 @@ declare module '@abradley2/frpuccino' {
         init: Model;
         update: (
             model: Model,
-            action: Action,
-            scheduler: Scheduler
+            action: Action
         ) => UpdateResult<Model, Action>;
         view: (model: Model) => StreamElement<Action>;
         scheduler?: Scheduler;
@@ -58,7 +57,15 @@ declare module '@abradley2/frpuccino' {
 
     export function mapElement<a, b>(mapFn: (from: a) => b, toNode: StreamElement<a>): StreamElement<b>
 
-    export function mapTaskCreator<Action, B> (mapFn: (a: Action) => B, taskCreator: TaskCreator<Action>): TaskCreator<B>
+    export function mapTaskCreator<Action, B>(mapFn: (a: Action) => B, taskCreator: TaskCreator<Action>): TaskCreator<B>
 
     export function mapUpdateResult<Model, ModelB, Action, ActionB>(mapModel: (m: Model) => ModelB, mapTask: (a: Action) => ActionB, updateResult: UpdateResult<Model, Action>): [ModelB, TaskCreator<ActionB>[]]
+
+    export function getModel<Model, Action>(
+        updateResult: UpdateResult<Model, Action>
+    ): Model
+
+    export function getTasks<Model, Action>(
+        updateResult: UpdateResult<Model, Action>
+    ): TaskCreator<Action>[]
 }

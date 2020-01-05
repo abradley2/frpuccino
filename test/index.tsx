@@ -1,14 +1,14 @@
 /** @jsx createElement */
-import test from 'tape'
+import tape from 'tape'
 import highland from 'highland'
 import { newDefaultScheduler } from '@most/scheduler'
 import { mapElement, createElement } from '../src'
 
 Object.assign(window, { createElement })
 
-const htest = test.createHarness()
+const test = tape.createHarness()
 
-highland(htest.createStream())
+highland(test.createStream())
   .reduce('', (a, b) => a + b)
   .toPromise(Promise).then((result) => {
     const pre = document.createElement('pre')
@@ -17,7 +17,7 @@ highland(htest.createStream())
     document.body.appendChild(pre)
   })
 
-htest('mapElement nesting', function (t) {
+test('mapElement nesting', function (t) {
   t.plan(1)
   t.timeoutAfter(100)
 
