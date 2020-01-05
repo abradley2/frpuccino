@@ -1,7 +1,11 @@
 /** @jsx createElement */
 import tape from 'tape'
 import highland from 'highland'
-import { newDefaultScheduler, asap } from '@most/scheduler'
+import {
+  newDefaultScheduler,
+  asap,
+  delay
+} from '@most/scheduler'
 import {
   propagateEventTask,
   now
@@ -10,7 +14,8 @@ import {
   mapElement,
   createElement,
   createApplication,
-  TaskCreator
+  TaskCreator,
+  mapTaskCreator
 } from '../src'
 
 Object.assign(window, { createElement })
@@ -94,4 +99,44 @@ test('propagateEventTask works as expected', function (t) {
     view: () => <div />
   })
     .run(0)
+})
+
+test('mapTaskCreator works as expected', function (t) {
+  t.plan(1)
+  t.timeoutAfter(1000)
+
+  const mount = document.createElement('div')
+
+  const disposable = createApplication({
+    view: () => <h3>hello</h3>,
+    mount,
+    init: 0,
+    update: (model, action) => {
+      if (action === 1) {
+        const taskCreator: TaskCreator<number> = (sink, scheduler) => {
+          const action = 2
+          const task = propagateEventTask(
+            { eventStream: now({ action }) },
+            sink
+          )
+          // TODO: investigate why "asap" is problematic with
+          // synchronously starting streams
+          return delay(1, task, scheduler)
+        }
+
+        return [
+          model,
+          mapTaskCreator(
+            (v: number) => v * 2,
+            taskCreator
+          )
+        ]
+      }
+      if (action === 4) {
+        t.pass('Task creator mapped 2 * 2 as expected')
+      }
+      return model
+    }
+  })
+    .run(1)
 })
