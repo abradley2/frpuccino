@@ -337,10 +337,44 @@ export function createApplication<Model, Action> (
   }
 }
 
+function fromOnEvent<Action> (
+  event,
+  target: Element,
+  mapFn: (event: Event) => Action
+): Stream<Element> {
+  let sink
+  let scheduler
+
+  const handleEvent = (event) => {
+    const action = mapFn(event)
+    if (sink) {
+      sink.event(scheduler.currentTime(), action)
+    }
+  }
+
+  if (target) {
+    target.addEventListener(event, handleEvent)
+  }
+
+  return {
+    run: (_sink, _scheduler) => {
+      sink = _sink
+      scheduler = _scheduler
+
+      return {
+        dispose: () => {
+          sink = undefined
+          target.removeEventListener(event, handleEvent)
+        }
+      }
+    }
+  }
+}
+
 function fromDOMEvent<Action> (
   event,
   target: Element,
-  mapFn: (Event) => Action
+  mapFn: (event: Event) => Action
 ): Stream<Event> {
   // we need to bind our event handler to the DOM node _immediately_ so
   // morphdom will copy it over, but the sink and scheduler aren't available
@@ -401,7 +435,18 @@ export function createElement<Action> (
       if (typeof val === 'undefined' || val === null) {
         return
       }
-      el.setAttribute(name, val)
+      if (name[0] === '$') {
+        if (name === '$on') {
+          val.forEach(config => {
+            el.eventStream = merge(
+              el.eventStream,
+              fromOnEvent(config.event, el, config.handler)
+            )
+          })
+        }
+      } else {
+        el.setAttribute(name, val)
+      }
     })
   }
 

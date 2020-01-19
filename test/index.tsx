@@ -178,3 +178,68 @@ test('mapElement works when converting types', function (t) {
 
   el.querySelector('input').dispatchEvent(new Event('change'))
 })
+
+const BEEP_BOOP = 'beep-boop'
+
+class BeepBoop extends HTMLElement {
+  constructor () {
+    super()
+    this.addEventListener('click', () => {
+      const ev = new CustomEvent(BEEP_BOOP, { detail: BEEP_BOOP })
+      this.dispatchEvent(ev)
+    })
+  }
+}
+
+window.customElements.define('beep-boop', BeepBoop)
+
+test('renders custom elements', function (t) {
+  t.plan(1)
+  t.timeoutAfter(100)
+
+  const el = <div>
+    <beep-boop />
+  </div>
+
+  t.ok(
+    el.firstChild instanceof BeepBoop,
+    'correctly mounts a custom element'
+  )
+})
+
+test('handles custom element events', function (t) {
+  t.plan(1)
+  t.timeoutAfter(100)
+
+  const view = <div>
+    <beep-boop
+      $properties={[
+        { name: 'customPropery', value: BEEP_BOOP }
+      ]}
+      $on={[
+        {
+          event: BEEP_BOOP,
+          handler: (e) => {
+            return {
+              type: e.detail
+            }
+          }
+        }
+      ]}
+    />
+  </div>
+
+  const customEl = view.firstChild
+
+  view.eventStream.run({
+    event: (_, e) => {
+      t.ok(
+        e && e.type === BEEP_BOOP,
+        'correctly handled a custom event'
+      )
+    }
+  }, newDefaultScheduler())
+
+  const clickEvent = new Event('click')
+  customEl.dispatchEvent(clickEvent)
+})
